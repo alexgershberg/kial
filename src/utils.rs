@@ -19,10 +19,28 @@ pub(crate) fn extract_op(s: &str) -> (&str, &str) {
     (&s[1..], &s[0..1])
 }
 
+pub(crate) fn extract_whitespace(s: &str) -> (&str, &str) {
+    let whitespace_end = s.char_indices()
+        .find_map(|(idx, c)| {
+            if c.is_ascii_whitespace() {None} else {Some(idx)}
+        })
+        .unwrap_or(s.len());
+
+    (&s[whitespace_end..], &s[..whitespace_end])
+}
+
 
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn extract_whitespace_basic() {
+        assert_eq!(extract_whitespace("  \t   1"), ("1", "  \t   "));
+        assert_eq!(extract_whitespace("     200"), ("200", "     "));
+        assert_eq!(extract_whitespace(" 200\r\n"), ("200\r\n", " "));
+        assert_eq!(extract_whitespace("\r\nHello World\r\n"), ("Hello World\r\n", "\r\n"));
+    }
 
     #[test]
     fn extract_empty() {
