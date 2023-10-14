@@ -108,6 +108,14 @@ mod test {
     }
 
     #[test]
+    fn do_not_extract_whitespace_when_it_is_required() {
+        assert_eq!(
+            extract_whitespace1("bar"),
+            Err(String::from("Expected: whitespace"))
+        );
+    }
+
+    #[test]
     fn do_not_extract_extract_empty_digits() {
         assert_eq!(extract_digit(""), Err(String::from("Expected: digits")));
     }
