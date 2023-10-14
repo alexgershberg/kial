@@ -9,13 +9,13 @@ struct BindingDef {
 
 impl BindingDef {
     fn new(s: &str) -> (&str, Self) {
-        let s = s.strip_prefix("let").expect("Expected: let");
+        let s = utils::tag("let", s);
 
         let (s, _) = utils::extract_whitespace(s);
         let (s, name) = utils::extract_ident(s);
         let (s, _) = utils::extract_whitespace(s);
 
-        let s = s.strip_prefix('=').expect("Expected: =");
+        let s = utils::tag("=", s);
 
         let (s, _) = utils::extract_whitespace(s);
 
@@ -37,7 +37,7 @@ mod tests {
     use crate::expr::{Number, Op};
 
     #[test]
-    fn parse_binding_def() {
+    fn parse_binding_def_expression() {
         assert_eq!(
             BindingDef::new("let a = 10 / 5"),
             (

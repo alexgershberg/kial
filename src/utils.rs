@@ -1,3 +1,8 @@
+pub(crate) fn tag<'a>(prefix: &'a str, s: &'a str) -> &'a str {
+    let s = s.strip_prefix(prefix).expect("Expected: {prefix}");
+    s
+}
+
 pub(crate) fn extract_digit(s: &str) -> (&str, &str) {
     take_while(|c| c.is_ascii_digit() || c == '-', s)
 }
@@ -36,6 +41,12 @@ mod test {
     use super::*;
 
     #[test]
+    fn remove_tag() {
+        assert_eq!(tag("let", "let a = b"), " a = b");
+        assert_eq!(tag("=", "= b"), " b");
+    }
+
+    #[test]
     fn extract_ident_alpha() {
         assert_eq!(extract_ident("abcd aaaa"), (" aaaa", "abcd"));
         assert_eq!(extract_ident("foo()"), ("()", "foo"));
@@ -49,7 +60,7 @@ mod test {
         assert_eq!(extract_ident("baz_999()"), ("()", "baz_999"));
     }
     #[test]
-    fn extract_ident_alphanumeric_failing() {
+    fn cannot_extract_ident_starting_with_number() {
         assert_eq!(extract_ident("123abc"), ("123abc", ""));
         assert_eq!(extract_ident("1000"), ("1000", ""));
     }
