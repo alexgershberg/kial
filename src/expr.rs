@@ -60,6 +60,7 @@ impl Expr {
 
     pub(crate) fn eval(self) -> Val {
         match self {
+            Self::Number(Number(num)) => Val::Number(num),
             Self::Operation { lhs, rhs, op } => {
                 let Number(lhs) = lhs;
                 let Number(rhs) = rhs;
@@ -73,7 +74,6 @@ impl Expr {
 
                 Val::Number(result)
             }
-            Self::Number(Number(num)) => Val::Number(num),
         }
     }
 }
