@@ -3,12 +3,10 @@ mod utils;
 #[derive(Debug, PartialEq)]
 struct Number(i32);
 
-
 impl Number {
     fn new(s: &str) -> (&str, Self) {
         let (s, number) = utils::extract_digit(s);
         let number = number.parse().unwrap();
-
 
         (s, Number(number))
     }
@@ -19,7 +17,7 @@ enum Op {
     Add,
     Sub,
     Mul,
-    Div
+    Div,
 }
 
 impl Op {
@@ -31,7 +29,7 @@ impl Op {
             "-" => Self::Sub,
             "*" => Self::Mul,
             "/" => Self::Div,
-            o => panic!("Invalid operator: {}", o)
+            o => panic!("Invalid operator: {}", o),
         };
 
         (s, op)
@@ -42,16 +40,20 @@ impl Op {
 struct Expr {
     lhs: Number,
     rhs: Number,
-    op: Op
+    op: Op,
 }
 
 impl Expr {
     fn new(s: &str) -> (&str, Self) {
+        let (s, _) = utils::extract_whitespace(s);
         let (s, lhs) = Number::new(s);
+        let (s, _) = utils::extract_whitespace(s);
         let (s, op) = Op::new(s);
+        let (s, _) = utils::extract_whitespace(s);
         let (s, rhs) = Number::new(s);
+        let (s, _) = utils::extract_whitespace(s);
 
-        (s, Self {lhs, rhs, op})
+        (s, Self { lhs, rhs, op })
     }
 }
 
@@ -86,11 +88,28 @@ mod tests {
 
     #[test]
     fn parse_one_plus_two() {
+        assert_eq!(
+            Expr::new("1+2"),
+            (
+                "",
+                Expr {
+                    lhs: Number(1),
+                    rhs: Number(2),
+                    op: Op::Add
+                }
+            )
+        );
 
-        assert_eq!(Expr::new("1+2"), ("", Expr {
-            lhs: Number(1),
-            rhs: Number(2),
-            op: Op::Add
-        }))
+        assert_eq!(
+            Expr::new("    \r\n    120     +     350"),
+            (
+                "",
+                Expr {
+                    lhs: Number(120),
+                    rhs: Number(350),
+                    op: Op::Add
+                }
+            )
+        )
     }
 }
