@@ -1,14 +1,16 @@
-pub(crate) fn tag<'a>(prefix: &'a str, s: &'a str) -> &'a str {
-    let s = s.strip_prefix(prefix).expect("Expected: {prefix}");
-    s
+pub(crate) fn tag<'a>(prefix: &'a str, s: &'a str) -> Result<&'a str, String> {
+    match s.strip_prefix(prefix) {
+        Some(s) => Ok(s),
+        None => Err(format!("Expected: {prefix}")),
+    }
 }
 
-pub(crate) fn extract_digit(s: &str) -> (&str, &str) {
-    take_while(|c| c.is_ascii_digit() || c == '-', s)
-}
-
-pub(crate) fn extract_op(s: &str) -> (&str, &str) {
-    take_while(|c| matches!(c, '+' | '-' | '*' | '/'), s)
+pub(crate) fn extract_digit(s: &str) -> Result<(&str, &str), String> {
+    take_while1(
+        |c| c.is_ascii_digit() || c == '-',
+        s,
+        String::from("Expected digits"),
+    )
 }
 
 pub(crate) fn extract_whitespace(s: &str) -> (&str, &str) {
@@ -36,14 +38,28 @@ pub(crate) fn take_while(pred: impl Fn(char) -> bool, s: &str) -> (&str, &str) {
     (remainder, extracted)
 }
 
+pub(crate) fn take_while1(
+    pred: impl Fn(char) -> bool,
+    s: &str,
+    error_msg: String,
+) -> Result<(&str, &str), String> {
+    let (remainder, extracted) = take_while(pred, s);
+
+    if extracted.is_empty() {
+        Err(error_msg)
+    } else {
+        Ok((remainder, extracted))
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
 
     #[test]
     fn remove_tag() {
-        assert_eq!(tag("let", "let a = b"), " a = b");
-        assert_eq!(tag("=", "= b"), " b");
+        assert_eq!(tag("let", "let a = b"), Ok(" a = b"));
+        assert_eq!(tag("=", "= b"), Ok(" b"));
     }
 
     #[test]
@@ -77,37 +93,24 @@ mod test {
     }
 
     #[test]
-    fn extract_empty() {
-        assert_eq!(extract_digit(""), ("", ""));
+    fn do_not_extract_extract_empty_digits() {
+        assert_eq!(extract_digit(""), Err(String::from("Expected digits")));
     }
 
     #[test]
     fn extract_digit_big() {
-        assert_eq!(extract_digit("123456+99999"), ("+99999", "123456"));
-        assert_eq!(extract_digit("1234aaaa"), ("aaaa", "1234")); // Not sure if correct
+        assert_eq!(extract_digit("123456+99999"), Ok(("+99999", "123456")));
+        assert_eq!(extract_digit("1234aaaa"), Ok(("aaaa", "1234"))); // Not sure if correct
     }
 
     #[test]
     fn extract_digit_negative() {
-        assert_eq!(extract_digit("-300+1"), ("+1", "-300"));
-        assert_eq!(extract_digit("-20"), ("", "-20"));
+        assert_eq!(extract_digit("-300+1"), Ok(("+1", "-300")));
+        assert_eq!(extract_digit("-20"), Ok(("", "-20")));
     }
 
     #[test]
     fn extract_one_digit() {
-        assert_eq!(extract_digit("1+2"), ("+2", "1"));
-    }
-
-    #[test]
-    fn extract_op_basic() {
-        assert_eq!(extract_op("+20"), ("20", "+"));
-        assert_eq!(extract_op("-20"), ("20", "-"));
-        assert_eq!(extract_op("-100"), ("100", "-"));
-        assert_eq!(extract_op("*20"), ("20", "*"));
-        assert_eq!(extract_op("*4"), ("4", "*"));
-        assert_eq!(extract_op("/20"), ("20", "/"));
-        assert_eq!(extract_op("/33"), ("33", "/"));
-        assert_eq!(extract_op("20"), ("20", ""));
-        assert_eq!(extract_op(""), ("", ""));
+        assert_eq!(extract_digit("1+2"), Ok(("+2", "1")));
     }
 }

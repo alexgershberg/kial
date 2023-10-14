@@ -1,3 +1,4 @@
+use crate::env::Env;
 use crate::expr::Expr;
 use crate::utils;
 
@@ -8,26 +9,30 @@ struct BindingDef {
 }
 
 impl BindingDef {
-    fn new(s: &str) -> (&str, Self) {
-        let s = utils::tag("let", s);
+    pub fn new(s: &str) -> Result<(&str, Self), String> {
+        let s = utils::tag("let", s)?;
 
         let (s, _) = utils::extract_whitespace(s);
         let (s, name) = utils::extract_ident(s);
         let (s, _) = utils::extract_whitespace(s);
 
-        let s = utils::tag("=", s);
+        let s = utils::tag("=", s)?;
 
         let (s, _) = utils::extract_whitespace(s);
 
-        let (s, val) = Expr::new(s);
+        let (s, val) = Expr::new(s)?;
 
-        (
+        Ok((
             s,
             Self {
                 name: name.to_string(),
                 val,
             },
-        )
+        ))
+    }
+
+    pub(crate) fn eval(self, env: &mut Env) {
+        env.store_binding(self.name, self.val.eval());
     }
 }
 
@@ -40,17 +45,17 @@ mod tests {
     fn parse_binding_def_expression() {
         assert_eq!(
             BindingDef::new("let a = 10 / 5"),
-            (
+            Ok((
                 "",
                 BindingDef {
                     name: String::from("a"),
-                    val: Expr {
+                    val: Expr::Operation {
                         lhs: Number(10),
                         rhs: Number(5),
                         op: Op::Div,
                     },
                 }
-            )
+            ))
         )
     }
 }
