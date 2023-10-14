@@ -9,7 +9,7 @@ pub(crate) fn extract_digit(s: &str) -> Result<(&str, &str), String> {
     take_while1(
         |c| c.is_ascii_digit() || c == '-',
         s,
-        String::from("Expected digits"),
+        String::from("Expected: digits"),
     )
 }
 
@@ -17,13 +17,21 @@ pub(crate) fn extract_whitespace(s: &str) -> (&str, &str) {
     take_while(|c| c.is_ascii_whitespace(), s)
 }
 
-pub(crate) fn extract_ident(s: &str) -> (&str, &str) {
+pub(crate) fn extract_whitespace1(s: &str) -> Result<(&str, &str), String> {
+    take_while1(
+        |c| c.is_ascii_whitespace(),
+        s,
+        String::from("Expected: whitespace"),
+    )
+}
+
+pub(crate) fn extract_ident(s: &str) -> Result<(&str, &str), String> {
     if s.starts_with(|c: char| c.is_numeric()) {
-        return (s, "");
+        return Err(String::from("Expected: identifier"));
     }
 
     let pred = |c: char| -> bool { c.is_ascii_alphanumeric() || c == '_' };
-    take_while(pred, s)
+    take_while1(pred, s, String::from("Expected: identifier"))
 }
 
 pub(crate) fn take_while(pred: impl Fn(char) -> bool, s: &str) -> (&str, &str) {
@@ -64,21 +72,28 @@ mod test {
 
     #[test]
     fn extract_ident_alpha() {
-        assert_eq!(extract_ident("abcd aaaa"), (" aaaa", "abcd"));
-        assert_eq!(extract_ident("foo()"), ("()", "foo"));
-        assert_eq!(extract_ident("hello_world()"), ("()", "hello_world"));
+        assert_eq!(extract_ident("abcd aaaa"), Ok((" aaaa", "abcd")));
+        assert_eq!(extract_ident("foo()"), Ok(("()", "foo")));
+        assert_eq!(extract_ident("hello_world()"), Ok(("()", "hello_world")));
     }
 
     #[test]
     fn extract_ident_alphanumeric() {
-        assert_eq!(extract_ident("a2"), ("", "a2"));
-        assert_eq!(extract_ident("bar123()"), ("()", "bar123"));
-        assert_eq!(extract_ident("baz_999()"), ("()", "baz_999"));
+        assert_eq!(extract_ident("a2"), Ok(("", "a2")));
+        assert_eq!(extract_ident("bar123()"), Ok(("()", "bar123")));
+        assert_eq!(extract_ident("baz_999()"), Ok(("()", "baz_999")));
     }
     #[test]
     fn cannot_extract_ident_starting_with_number() {
-        assert_eq!(extract_ident("123abc"), ("123abc", ""));
-        assert_eq!(extract_ident("1000"), ("1000", ""));
+        assert_eq!(
+            extract_ident("123abc"),
+            Err(String::from("Expected: identifier"))
+        );
+
+        assert_eq!(
+            extract_ident("1000"),
+            Err(String::from("Expected: identifier"))
+        );
     }
 
     #[test]
@@ -94,7 +109,7 @@ mod test {
 
     #[test]
     fn do_not_extract_extract_empty_digits() {
-        assert_eq!(extract_digit(""), Err(String::from("Expected digits")));
+        assert_eq!(extract_digit(""), Err(String::from("Expected: digits")));
     }
 
     #[test]

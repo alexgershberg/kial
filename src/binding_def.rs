@@ -12,8 +12,9 @@ impl BindingDef {
     pub fn new(s: &str) -> Result<(&str, Self), String> {
         let s = utils::tag("let", s)?;
 
-        let (s, _) = utils::extract_whitespace(s);
-        let (s, name) = utils::extract_ident(s);
+        let (s, _) = utils::extract_whitespace1(s)?;
+
+        let (s, name) = utils::extract_ident(s)?;
         let (s, _) = utils::extract_whitespace(s);
 
         let s = utils::tag("=", s)?;
@@ -40,6 +41,22 @@ impl BindingDef {
 mod tests {
     use super::*;
     use crate::expr::{Number, Op};
+
+    #[test]
+    fn parse_bad_no_ident() {
+        assert_eq!(
+            BindingDef::new("let = 1+2"),
+            Err(String::from("Expected: identifier"))
+        )
+    }
+
+    #[test]
+    fn parse_bad_no_space_after_let() {
+        assert_eq!(
+            BindingDef::new("letabcd=1+2"),
+            Err(String::from("Expected: whitespace"))
+        )
+    }
 
     #[test]
     fn parse_binding_def_expression() {
