@@ -1,20 +1,28 @@
-pub(crate) fn extract_digit(s: &str) -> (&str, &str){
-    take_while(|c|{c.is_ascii_digit()}, s)
+pub(crate) fn extract_digit(s: &str) -> (&str, &str) {
+    take_while(|c| c.is_ascii_digit() || c == '-', s)
 }
 
 pub(crate) fn extract_op(s: &str) -> (&str, &str) {
-    take_while(|c|{ matches!(c, '+' | '-' | '*' | '/') }, s)
+    take_while(|c| matches!(c, '+' | '-' | '*' | '/'), s)
 }
 
 pub(crate) fn extract_whitespace(s: &str) -> (&str, &str) {
-    take_while(|c|{c.is_ascii_whitespace()}, s)
+    take_while(|c| c.is_ascii_whitespace(), s)
+}
+
+pub(crate) fn extract_ident(s: &str) -> (&str, &str) {
+    if s.starts_with(|c: char| c.is_numeric()) {
+        return (s, "");
+    }
+
+    let pred = |c: char| -> bool { c.is_ascii_alphanumeric() || c == '_' };
+    take_while(pred, s)
 }
 
 pub(crate) fn take_while(pred: impl Fn(char) -> bool, s: &str) -> (&str, &str) {
-    let char_end = s.char_indices()
-        .find_map(|(idx, c)| {
-            if pred(c) { None } else {Some(idx)}
-        })
+    let char_end = s
+        .char_indices()
+        .find_map(|(idx, c)| if pred(c) { None } else { Some(idx) })
         .unwrap_or(s.len());
 
     let extracted = &s[..char_end];
@@ -23,17 +31,38 @@ pub(crate) fn take_while(pred: impl Fn(char) -> bool, s: &str) -> (&str, &str) {
     (remainder, extracted)
 }
 
-
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn extract_ident_alpha() {
+        assert_eq!(extract_ident("abcd aaaa"), (" aaaa", "abcd"));
+        assert_eq!(extract_ident("foo()"), ("()", "foo"));
+        assert_eq!(extract_ident("hello_world()"), ("()", "hello_world"));
+    }
+
+    #[test]
+    fn extract_ident_alphanumeric() {
+        assert_eq!(extract_ident("a2"), ("", "a2"));
+        assert_eq!(extract_ident("bar123()"), ("()", "bar123"));
+        assert_eq!(extract_ident("baz_999()"), ("()", "baz_999"));
+    }
+    #[test]
+    fn extract_ident_alphanumeric_failing() {
+        assert_eq!(extract_ident("123abc"), ("123abc", ""));
+        assert_eq!(extract_ident("1000"), ("1000", ""));
+    }
 
     #[test]
     fn extract_whitespace_basic() {
         assert_eq!(extract_whitespace("  \t   1"), ("1", "  \t   "));
         assert_eq!(extract_whitespace("     200"), ("200", "     "));
         assert_eq!(extract_whitespace(" 200\r\n"), ("200\r\n", " "));
-        assert_eq!(extract_whitespace("\r\nHello World\r\n"), ("Hello World\r\n", "\r\n"));
+        assert_eq!(
+            extract_whitespace("\r\nHello World\r\n"),
+            ("Hello World\r\n", "\r\n")
+        );
     }
 
     #[test]
@@ -42,15 +71,16 @@ mod test {
     }
 
     #[test]
-    fn extract_big() {
+    fn extract_digit_big() {
         assert_eq!(extract_digit("123456+99999"), ("+99999", "123456"));
+        assert_eq!(extract_digit("1234aaaa"), ("aaaa", "1234")); // Not sure if correct
     }
 
-    // Don't care for now
-    // #[test]
-    // fn extract_negative() {
-    //     assert_eq!(extract_digit("-300+1"), ("+1", "-300"));
-    // }
+    #[test]
+    fn extract_digit_negative() {
+        assert_eq!(extract_digit("-300+1"), ("+1", "-300"));
+        assert_eq!(extract_digit("-20"), ("", "-20"));
+    }
 
     #[test]
     fn extract_one_digit() {
