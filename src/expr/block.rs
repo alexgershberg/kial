@@ -20,7 +20,6 @@ impl Block {
         let mut stmts = Vec::new();
         while let Ok((new_s, stmt)) = Stmt::new(s) {
             s = new_s;
-            dbg!(s);
             stmts.push(stmt)
         }
 
