@@ -3,12 +3,12 @@ use crate::utils;
 use crate::val::Val;
 
 #[derive(Debug, PartialEq)]
-struct BindingUsage {
-    name: String,
+pub(crate) struct BindingUsage {
+    pub name: String,
 }
 
 impl BindingUsage {
-    fn new(s: &str) -> Result<(&str, Self), String> {
+    pub fn new(s: &str) -> Result<(&str, Self), String> {
         let (s, name) = utils::extract_ident(s)?;
         Ok((
             s,
@@ -18,7 +18,7 @@ impl BindingUsage {
         ))
     }
 
-    fn eval(self, env: &Env) -> Result<Val, String> {
+    pub fn eval(self, env: &Env) -> Result<Val, String> {
         env.get_binding(&self.name)
     }
 }
@@ -30,7 +30,7 @@ mod tests {
 
     #[test]
     fn eval_binding_not_found() {
-        let mut env = Env::default();
+        let env = Env::default();
         assert_eq!(
             BindingUsage {
                 name: "bar".to_string(),

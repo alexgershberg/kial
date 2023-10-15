@@ -1,5 +1,10 @@
+use crate::expr::binding_usage::BindingUsage;
+use crate::expr::block::Block;
 use crate::utils;
 use crate::val::Val;
+
+pub mod binding_usage;
+pub mod block;
 
 #[derive(Debug, PartialEq)]
 pub struct Number(pub i32);
@@ -35,6 +40,8 @@ impl Op {
 pub enum Expr {
     Number(Number),
     Operation { lhs: Number, rhs: Number, op: Op },
+    BindingUsage(BindingUsage),
+    Block(Block),
 }
 
 impl Expr {
@@ -54,8 +61,23 @@ impl Expr {
         Ok((s, Self::Operation { lhs, rhs, op }))
     }
 
+    fn new_binding_usage(s: &str) -> Result<(&str, Self), String> {
+        let (s, binding_usage) = BindingUsage::new(s)?;
+
+        Ok((s, Self::BindingUsage(binding_usage)))
+    }
+
+    fn new_block(s: &str) -> Result<(&str, Self), String> {
+        let (s, block) = Block::new(s)?;
+
+        Ok((s, Self::Block(block)))
+    }
+
     pub(crate) fn new(s: &str) -> Result<(&str, Self), String> {
-        Self::new_operation(s).or_else(|_| Self::new_number(s))
+        Self::new_operation(s)
+            .or_else(|_| Self::new_number(s))
+            .or_else(|_| Self::new_block(s))
+            .or_else(|_| Self::new_binding_usage(s))
     }
 
     pub(crate) fn eval(self) -> Val {
@@ -74,6 +96,9 @@ impl Expr {
 
                 Val::Number(result)
             }
+            _ => todo!()
+            // Self::BindingUsage(binding_usage) => binding_usage.eval(&env),
+            // Self::Block(block) => block.eval(&env),
         }
     }
 }
@@ -81,6 +106,20 @@ impl Expr {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::expr::binding_usage::BindingUsage;
+
+    #[test]
+    fn parse_binding_usage() {
+        assert_eq!(
+            Expr::new("bar"),
+            Ok((
+                "",
+                Expr::BindingUsage(BindingUsage {
+                    name: "bar".to_string(),
+                })
+            ))
+        )
+    }
 
     #[test]
     fn parse_number() {

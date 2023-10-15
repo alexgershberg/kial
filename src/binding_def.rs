@@ -3,9 +3,9 @@ use crate::expr::Expr;
 use crate::utils;
 
 #[derive(Debug, PartialEq)]
-struct BindingDef {
-    name: String,
-    val: Expr,
+pub(crate) struct BindingDef {
+    pub name: String,
+    pub val: Expr,
 }
 
 impl BindingDef {
@@ -41,9 +41,9 @@ impl BindingDef {
 mod tests {
     use super::*;
     use crate::expr::{Number, Op};
- t
+
     #[test]
-    fn bind_sinlge_number() {
+    fn bind_single_number() {
         assert_eq!(
             BindingDef::new("let a = 10"),
             Ok((
