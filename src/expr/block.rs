@@ -1,5 +1,5 @@
 use crate::env::Env;
-use crate::expr::Expr;
+
 use crate::stmt::Stmt;
 use crate::utils;
 use crate::val::Val;
@@ -31,10 +31,17 @@ impl Block {
     }
 
     pub fn eval(&self, env: &Env) -> Result<Val, String> {
-        self.stmts.last().map_or(Ok(Val::Unit), |stmt| match stmt {
-            Stmt::Expr(expr) => expr.eval(&env),
-            Stmt::BindingDef(binding_def) => todo!(),
-        })
+        if self.stmts.is_empty() {
+            return Ok(Val::Unit);
+        }
+
+        let mut env = Env::default();
+
+        for stmt in &self.stmts {
+            stmt.eval(&mut env)?;
+        }
+
+        self.stmts.last().unwrap().eval(&mut env)
     }
 }
 
@@ -91,6 +98,45 @@ mod tests {
             }
             .eval(&env),
             Ok(Val::Number(10))
+        )
+    }
+
+    #[test]
+    fn eval_bad_block() {
+        /*
+        {
+            a
+        }
+        */
+        let env = Env::default();
+        assert_eq!(
+            Block {
+                stmts: vec![Stmt::Expr(Expr::BindingUsage(BindingUsage {
+                    name: "a".to_string()
+                }))]
+            }
+            .eval(&env),
+            Err("Binding does not exist: a".to_string())
+        )
+    }
+
+    #[test]
+    fn eval_block_with_just_assignment() {
+        /*
+        {
+            let a = 10
+        }
+        */
+        let env = Env::default();
+        assert_eq!(
+            Block {
+                stmts: vec![Stmt::BindingDef(BindingDef {
+                    name: "a".to_string(),
+                    val: Expr::Number(Number(10)),
+                })]
+            }
+            .eval(&env),
+            Ok(Val::Unit)
         )
     }
 

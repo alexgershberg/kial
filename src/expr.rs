@@ -38,7 +38,7 @@ impl Op {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum Expr {
+pub(crate) enum Expr {
     Number(Number),
     Operation { lhs: Number, rhs: Number, op: Op },
     BindingUsage(BindingUsage),
@@ -83,8 +83,8 @@ impl Expr {
 
     pub(crate) fn eval(&self, env: &Env) -> Result<Val, String> {
         match self {
-            Self::BindingUsage(binding_usage) => binding_usage.eval(&env),
-            Self::Block(block) => block.eval(&env),
+            Self::BindingUsage(binding_usage) => binding_usage.eval(env),
+            Self::Block(block) => block.eval(env),
             Self::Number(Number(num)) => Ok(Val::Number(*num)),
             Self::Operation { lhs, rhs, op } => {
                 let Number(lhs) = lhs;

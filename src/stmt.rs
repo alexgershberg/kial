@@ -1,5 +1,7 @@
 use crate::binding_def::BindingDef;
+use crate::env::Env;
 use crate::expr::Expr;
+use crate::val::Val;
 
 #[derive(Debug, PartialEq)]
 pub(crate) enum Stmt {
@@ -12,6 +14,13 @@ impl Stmt {
         BindingDef::new(s)
             .map(|(s, binding_def)| (s, Self::BindingDef(binding_def)))
             .or_else(|_| Expr::new(s).map(|(s, expr)| (s, Self::Expr(expr))))
+    }
+
+    pub(crate) fn eval(&self, env: &mut Env) -> Result<Val, String> {
+        match self {
+            Self::BindingDef(binding_def) => binding_def.eval(env),
+            Self::Expr(expr) => expr.eval(env),
+        }
     }
 }
 
