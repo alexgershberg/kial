@@ -115,6 +115,11 @@ mod tests {
     use crate::expr::binding_usage::BindingUsage;
 
     #[test]
+    fn parse_single_bracket() {
+        assert_eq!(Expr::new("}"), Err("Expected: digits".to_string()))
+    }
+
+    #[test]
     fn parse_binding_usage() {
         assert_eq!(
             Expr::new("bar"),
