@@ -1,3 +1,4 @@
+use crate::env::Env;
 use crate::expr::binding_usage::BindingUsage;
 use crate::expr::block::Block;
 use crate::utils;
@@ -80,9 +81,11 @@ impl Expr {
             .or_else(|_| Self::new_binding_usage(s))
     }
 
-    pub(crate) fn eval(self) -> Val {
+    pub(crate) fn eval(&self, env: &Env) -> Result<Val, String> {
         match self {
-            Self::Number(Number(num)) => Val::Number(num),
+            Self::BindingUsage(binding_usage) => binding_usage.eval(&env),
+            Self::Block(block) => block.eval(&env),
+            Self::Number(Number(num)) => Ok(Val::Number(*num)),
             Self::Operation { lhs, rhs, op } => {
                 let Number(lhs) = lhs;
                 let Number(rhs) = rhs;
@@ -94,11 +97,8 @@ impl Expr {
                     Op::Div => lhs / rhs,
                 };
 
-                Val::Number(result)
+                Ok(Val::Number(result))
             }
-            _ => todo!()
-            // Self::BindingUsage(binding_usage) => binding_usage.eval(&env),
-            // Self::Block(block) => block.eval(&env),
         }
     }
 }
@@ -191,14 +191,16 @@ mod tests {
 
     #[test]
     fn eval_add() {
+        let env = Env::default();
+
         assert_eq!(
             Expr::Operation {
                 lhs: Number(10),
                 rhs: Number(30),
                 op: Op::Add
             }
-            .eval(),
-            Val::Number(40)
+            .eval(&env),
+            Ok(Val::Number(40))
         );
 
         assert_eq!(
@@ -207,47 +209,50 @@ mod tests {
                 rhs: Number(100),
                 op: Op::Add
             }
-            .eval(),
-            Val::Number(-150)
+            .eval(&env),
+            Ok(Val::Number(-150))
         )
     }
 
     #[test]
     fn eval_sub() {
+        let env = Env::default();
         assert_eq!(
             Expr::Operation {
                 lhs: Number(12),
                 rhs: Number(4),
                 op: Op::Sub
             }
-            .eval(),
-            Val::Number(8)
+            .eval(&env),
+            Ok(Val::Number(8))
         )
     }
 
     #[test]
     fn eval_mul() {
+        let env = Env::default();
         assert_eq!(
             Expr::Operation {
                 lhs: Number(3),
                 rhs: Number(4),
                 op: Op::Mul
             }
-            .eval(),
-            Val::Number(12)
+            .eval(&env),
+            Ok(Val::Number(12))
         )
     }
 
     #[test]
     fn eval_div() {
+        let env = Env::default();
         assert_eq!(
             Expr::Operation {
                 lhs: Number(12),
                 rhs: Number(4),
                 op: Op::Div
             }
-            .eval(),
-            Val::Number(3)
+            .eval(&env),
+            Ok(Val::Number(3))
         )
     }
 }

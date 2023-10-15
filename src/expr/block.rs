@@ -6,7 +6,7 @@ use crate::val::Val;
 
 #[derive(Debug, PartialEq)]
 pub(crate) struct Block {
-    pub exprs: Vec<Stmt>,
+    pub stmts: Vec<Stmt>,
 }
 
 impl Block {
@@ -17,22 +17,25 @@ impl Block {
         let (s, _) = utils::extract_whitespace(s);
 
         let mut s = s;
-        let mut exprs = Vec::new();
+        let mut stmts = Vec::new();
         while let Ok((new_s, stmt)) = Stmt::new(s) {
             s = new_s;
             dbg!(s);
-            exprs.push(stmt)
+            stmts.push(stmt)
         }
 
         let (s, _) = utils::extract_whitespace(s);
         let s = utils::tag("}", s)?;
         let (s, _) = utils::extract_whitespace(s);
 
-        Ok((s, Self { exprs }))
+        Ok((s, Self { stmts }))
     }
 
-    pub fn eval(self, env: &Env) -> Result<Val, String> {
-        todo!()
+    pub fn eval(&self, env: &Env) -> Result<Val, String> {
+        self.stmts.last().map_or(Ok(Val::Unit), |stmt| match stmt {
+            Stmt::Expr(expr) => expr.eval(&env),
+            Stmt::BindingDef(binding_def) => todo!(),
+        })
     }
 }
 
@@ -44,18 +47,67 @@ mod tests {
     use crate::expr::{Expr, Number, Op};
 
     #[test]
+    fn eval_empty_block() {
+        let env = Env::default();
+        assert_eq!(Block { stmts: Vec::new() }.eval(&env), Ok(Val::Unit))
+    }
+
+    #[test]
+    fn eval_single_number_block() {
+        /*
+        {
+            10
+        }
+        */
+        let env = Env::default();
+        assert_eq!(
+            Block {
+                stmts: vec![Stmt::Expr(Expr::Number(Number(10)))]
+            }
+            .eval(&env),
+            Ok(Val::Number(10))
+        )
+    }
+
+    #[test]
+    fn eval_simple_block() {
+        /*
+        {
+            let a = 10
+            a
+        }
+        */
+        let env = Env::default();
+        assert_eq!(
+            Block {
+                stmts: vec![
+                    Stmt::BindingDef(BindingDef {
+                        name: "a".to_string(),
+                        val: Expr::Number(Number(10))
+                    }),
+                    Stmt::Expr(Expr::BindingUsage(BindingUsage {
+                        name: "a".to_string()
+                    }))
+                ]
+            }
+            .eval(&env),
+            Ok(Val::Number(10))
+        )
+    }
+
+    #[test]
     fn parse_empty_block() {
-        assert_eq!(Block::new("{}"), Ok(("", Block { exprs: Vec::new() })))
+        assert_eq!(Block::new("{}"), Ok(("", Block { stmts: Vec::new() })))
     }
 
     #[test]
     fn parse_empty_block_with_whitespace() {
         assert_eq!(
             Block::new("{       }"),
-            Ok(("", Block { exprs: Vec::new() }))
+            Ok(("", Block { stmts: Vec::new() }))
         );
 
-        assert_eq!(Block::new(" {   } "), Ok(("", Block { exprs: Vec::new() })))
+        assert_eq!(Block::new(" {   } "), Ok(("", Block { stmts: Vec::new() })))
     }
 
     #[test]
@@ -65,7 +117,7 @@ mod tests {
             Ok((
                 "",
                 Block {
-                    exprs: vec![Stmt::Expr(Expr::Number(Number(5)))]
+                    stmts: vec![Stmt::Expr(Expr::Number(Number(5)))]
                 }
             ))
         )
@@ -84,7 +136,7 @@ mod tests {
             Ok((
                 "",
                 Block {
-                    exprs: vec![
+                    stmts: vec![
                         Stmt::BindingDef(BindingDef {
                             name: "a".to_string(),
                             val: Expr::Operation {

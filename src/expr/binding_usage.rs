@@ -19,7 +19,7 @@ impl BindingUsage {
         ))
     }
 
-    pub fn eval(self, env: &Env) -> Result<Val, String> {
+    pub fn eval(&self, env: &Env) -> Result<Val, String> {
         env.get_binding(&self.name)
     }
 }
