@@ -41,6 +41,20 @@ impl BindingDef {
 mod tests {
     use super::*;
     use crate::expr::{Number, Op};
+ t
+    #[test]
+    fn bind_sinlge_number() {
+        assert_eq!(
+            BindingDef::new("let a = 10"),
+            Ok((
+                "",
+                BindingDef {
+                    name: "a".to_string(),
+                    val: Expr::Number(Number(10)),
+                }
+            ))
+        )
+    }
 
     #[test]
     fn parse_bad_no_ident() {
