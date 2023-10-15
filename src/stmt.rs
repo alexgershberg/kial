@@ -27,6 +27,8 @@ impl Stmt {
 #[cfg(test)]
 mod tests {
     use crate::binding_def::BindingDef;
+    use crate::expr::binding_usage::BindingUsage;
+    use crate::expr::operation::Operation;
     use crate::expr::{Expr, Number, Op};
     use crate::stmt::Stmt;
 
@@ -50,13 +52,13 @@ mod tests {
             Stmt::new("10 * 15"),
             Ok((
                 "",
-                Stmt::Expr(Expr::Operation {
-                    lhs: Number(10),
-                    rhs: Number(15),
-                    op: Op::Mul,
-                })
+                Stmt::Expr(Expr::Operation(Operation {
+                    lhs: Box::new(Expr::Number(Number(10))),
+                    rhs: Box::new(Expr::Number(Number(15))),
+                    op: Op::Mul
+                }))
             ))
-        );
+        )
     }
 
     #[test]
@@ -64,6 +66,62 @@ mod tests {
         assert_eq!(
             Stmt::new("10"),
             Ok(("", Stmt::Expr(Expr::Number(Number(10)))))
+        );
+    }
+
+    #[test]
+    fn parse_assigment_of_expr_to_variable() {
+        assert_eq!(
+            Stmt::new("let a = 10 * 15"),
+            Ok((
+                "",
+                Stmt::BindingDef(BindingDef {
+                    name: "a".to_string(),
+                    val: Expr::Operation(Operation {
+                        lhs: Box::new(Expr::Number(Number(10))),
+                        rhs: Box::new(Expr::Number(Number(15))),
+                        op: Op::Mul
+                    })
+                })
+            ))
+        );
+    }
+
+    #[test]
+    fn parse_assigment_of_variable_to_variable() {
+        assert_eq!(
+            Stmt::new("let a = b"),
+            Ok((
+                "",
+                Stmt::BindingDef(BindingDef {
+                    name: "a".to_string(),
+                    val: Expr::BindingUsage(BindingUsage {
+                        name: "b".to_string()
+                    })
+                })
+            ))
+        );
+    }
+
+    #[test]
+    fn parse_assigment_of_multi_variable_expression_to_variable() {
+        assert_eq!(
+            Stmt::new("let a = b / c"),
+            Ok((
+                "",
+                Stmt::BindingDef(BindingDef {
+                    name: "a".to_string(),
+                    val: Expr::Operation(Operation {
+                        lhs: Box::new(Expr::BindingUsage(BindingUsage {
+                            name: "b".to_string()
+                        })),
+                        rhs: Box::new(Expr::BindingUsage(BindingUsage {
+                            name: "c".to_string()
+                        })),
+                        op: Op::Div
+                    })
+                })
+            ))
         );
     }
 }

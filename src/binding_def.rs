@@ -44,6 +44,7 @@ impl BindingDef {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::expr::operation::Operation;
     use crate::expr::{Number, Op};
 
     #[test]
@@ -84,11 +85,11 @@ mod tests {
                 "",
                 BindingDef {
                     name: String::from("a"),
-                    val: Expr::Operation {
-                        lhs: Number(10),
-                        rhs: Number(5),
+                    val: Expr::Operation(Operation {
+                        lhs: Box::new(Expr::Number(Number(10))),
+                        rhs: Box::new(Expr::Number(Number(5))),
                         op: Op::Div,
-                    },
+                    }),
                 }
             ))
         )
