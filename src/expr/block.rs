@@ -16,13 +16,15 @@ impl Block {
 
         let (s, _) = utils::extract_whitespace(s);
 
-        let (s, exprs) = if let Ok((s, stmt)) = Stmt::new(s) {
-            (s, vec![stmt])
-        } else {
-            (s, Vec::new())
-        };
-        let (s, _) = utils::extract_whitespace(s);
+        let mut s = s;
+        let mut exprs = Vec::new();
+        while let Ok((new_s, stmt)) = Stmt::new(s) {
+            s = new_s;
+            dbg!(s);
+            exprs.push(stmt)
+        }
 
+        let (s, _) = utils::extract_whitespace(s);
         let s = utils::tag("}", s)?;
         let (s, _) = utils::extract_whitespace(s);
 
@@ -84,7 +86,7 @@ mod tests {
                 Block {
                     exprs: vec![
                         Stmt::BindingDef(BindingDef {
-                            name: "".to_string(),
+                            name: "a".to_string(),
                             val: Expr::Operation {
                                 lhs: Number(20),
                                 rhs: Number(4),
