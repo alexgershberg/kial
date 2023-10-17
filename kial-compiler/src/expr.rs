@@ -137,6 +137,11 @@ mod tests {
     use crate::expr::binding_usage::BindingUsage;
 
     #[test]
+    fn expr_parse_gibberish_1() {
+        assert_eq!(Expr::new("-"), Err("Expected: digits".to_string()))
+    }
+
+    #[test]
     fn parse_single_bracket() {
         assert_eq!(Expr::new("}"), Err("Expected: digits".to_string()))
     }
@@ -197,6 +202,16 @@ mod tests {
     #[test]
     fn parse_number() {
         assert_eq!(Number::new("128"), Ok(("", Number(128))));
+    }
+
+    #[test]
+    fn parse_number_whitespace() {
+        assert_eq!(Number::new(""), Err("Expected: digits".to_string()));
+    }
+
+    #[test]
+    fn parse_number_gibberish() {
+        assert_eq!(Number::new("-"), Err("Expected: digits".to_string()));
     }
 
     #[test]

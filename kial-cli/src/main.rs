@@ -7,11 +7,9 @@ fn main() {
     loop {
         let mut input = String::new();
         if let Ok(_) = stdin.read_line(&mut input) {
-            let val = kial_compiler::parse(input.as_str(), &mut env);
-
-            match val {
-                Ok(val) => {
-                    println!("> {val}");
+            match kial_compiler::parse(input.trim()) {
+                Ok(parse) => {
+                    println!("> {parse:#?}");
                 }
                 Err(e) => {
                     println!("> {e}")

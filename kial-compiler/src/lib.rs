@@ -2,6 +2,7 @@ extern crate core;
 
 use crate::env::Env;
 use crate::stmt::Stmt;
+use crate::val::Val;
 
 pub mod binding_def;
 pub mod expr;
@@ -11,7 +12,16 @@ pub mod env;
 mod utils;
 mod val;
 
-pub fn parse(s: &str, env: &mut Env) -> Result<val::Val, String> {
+#[derive(Debug)]
+pub struct Parse(Stmt);
+
+pub fn parse(s: &str) -> Result<Parse, String> {
     let (_, stmt) = Stmt::new(s)?;
-    stmt.eval(env)
+    Ok(Parse(stmt))
+}
+
+impl Parse {
+    pub fn eval(&self, env: &mut Env) -> Result<Val, String> {
+        self.0.eval(env)
+    }
 }

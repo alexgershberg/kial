@@ -6,8 +6,11 @@ pub(crate) fn tag<'a>(prefix: &'a str, s: &'a str) -> Result<&'a str, String> {
 }
 
 pub(crate) fn extract_digit(s: &str) -> Result<(&str, &str), String> {
+    let is_negative_number = |idx, c| idx == 0 && c == '-' && s.len() > 1;
+    let is_positive_number = |idx, c| idx == 0 && c == '+' && s.len() > 1;
+
     take_while1(
-        |c| c.is_ascii_digit() || c == '-',
+        |idx, c| c.is_ascii_digit() || is_negative_number(idx, c) || is_positive_number(idx, c),
         s,
         String::from("Expected: digits"),
     )
@@ -15,12 +18,12 @@ pub(crate) fn extract_digit(s: &str) -> Result<(&str, &str), String> {
 
 pub(crate) fn extract_whitespace(s: &str) -> (&str, &str) {
     // FIXME This can just be: let s = s.strip();
-    take_while(|c| c.is_ascii_whitespace(), s)
+    take_while(|_, c| c.is_ascii_whitespace(), s)
 }
 
 pub(crate) fn extract_whitespace1(s: &str) -> Result<(&str, &str), String> {
     take_while1(
-        |c| c.is_ascii_whitespace(),
+        |_, c| c.is_ascii_whitespace(),
         s,
         String::from("Expected: whitespace"),
     )
@@ -31,14 +34,14 @@ pub(crate) fn extract_ident(s: &str) -> Result<(&str, &str), String> {
         return Err(String::from("Expected: identifier"));
     }
 
-    let pred = |c: char| -> bool { c.is_ascii_alphanumeric() || c == '_' };
+    let pred = |_: usize, c: char| -> bool { c.is_ascii_alphanumeric() || c == '_' };
     take_while1(pred, s, String::from("Expected: identifier"))
 }
 
-pub(crate) fn take_while(pred: impl Fn(char) -> bool, s: &str) -> (&str, &str) {
+pub(crate) fn take_while(pred: impl Fn(usize, char) -> bool, s: &str) -> (&str, &str) {
     let char_end = s
         .char_indices()
-        .find_map(|(idx, c)| if pred(c) { None } else { Some(idx) })
+        .find_map(|(idx, c)| if pred(idx, c) { None } else { Some(idx) })
         .unwrap_or(s.len());
 
     let extracted = &s[..char_end];
@@ -48,7 +51,7 @@ pub(crate) fn take_while(pred: impl Fn(char) -> bool, s: &str) -> (&str, &str) {
 }
 
 pub(crate) fn take_while1(
-    pred: impl Fn(char) -> bool,
+    pred: impl Fn(usize, char) -> bool,
     s: &str,
     error_msg: String,
 ) -> Result<(&str, &str), String> {
@@ -134,7 +137,22 @@ mod test {
     }
 
     #[test]
+    fn extract_digit_positive() {
+        assert_eq!(extract_digit("+20"), Ok(("", "+20")));
+    }
+
+    #[test]
+    fn extract_digit_bad_input() {
+        assert_eq!(extract_digit("-"), Err("Expected: digits".to_string()));
+        assert_eq!(extract_digit("+"), Err("Expected: digits".to_string()));
+        assert_eq!(extract_digit("a"), Err("Expected: digits".to_string()));
+        assert_eq!(extract_digit("\r\n"), Err("Expected: digits".to_string()));
+        assert_eq!(extract_digit("."), Err("Expected: digits".to_string()));
+    }
+
+    #[test]
     fn extract_one_digit() {
         assert_eq!(extract_digit("1+2"), Ok(("+2", "1")));
+        assert_eq!(extract_digit("1 + 2"), Ok((" + 2", "1")));
     }
 }

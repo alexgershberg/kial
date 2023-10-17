@@ -1,6 +1,5 @@
 use crate::expr::{Expr, Number, Op};
 use crate::utils;
-use std::fmt::format;
 
 #[derive(Debug, PartialEq)]
 pub(crate) struct Operation {
@@ -36,6 +35,10 @@ impl Operation {
 
 #[cfg(test)]
 mod tests {
+    use crate::expr::operation::Operation;
+
     #[test]
-    fn parse_basic() {}
+    fn op_parse_gibberish_1() {
+        assert_eq!(Operation::new("-"), Err("Expected: digits".to_string()))
+    }
 }
