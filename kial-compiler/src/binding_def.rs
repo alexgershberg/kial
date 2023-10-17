@@ -10,7 +10,11 @@ pub(crate) struct BindingDef {
 }
 
 impl BindingDef {
-    pub fn parse(s: &str) -> Result<(&str, Self), String> {
+    pub(crate) fn new(name: String, val: Expr) -> Self {
+        BindingDef { name, val }
+    }
+
+    pub(crate) fn parse(s: &str) -> Result<(&str, Self), String> {
         let (s, _) = utils::extract_whitespace(s);
 
         let s = utils::tag("let", s)?;
@@ -66,10 +70,7 @@ mod tests {
             BindingDef::parse("     let b = 20 "),
             Ok((
                 "",
-                BindingDef {
-                    name: "b".to_string(),
-                    val: Expr::Number(Number(20)),
-                }
+                BindingDef::new("b".to_string(), Expr::Number(Number(20)))
             ))
         )
     }
@@ -98,11 +99,11 @@ mod tests {
                 "",
                 BindingDef {
                     name: String::from("a"),
-                    val: Expr::Operation(Operation {
-                        lhs: Box::new(Expr::Number(Number(10))),
-                        rhs: Box::new(Expr::Number(Number(5))),
-                        op: Op::Div,
-                    }),
+                    val: Expr::Operation(Operation::new(
+                        Expr::Number(Number(10)),
+                        Expr::Number(Number(5)),
+                        Op::Div
+                    )),
                 }
             ))
         )

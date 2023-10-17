@@ -334,11 +334,11 @@ mod tests {
     fn eval_div() {
         let env = Env::default();
         assert_eq!(
-            Expr::Operation(Operation {
-                lhs: Box::new(Expr::Number(Number(12))),
-                rhs: Box::new(Expr::Number(Number(4))),
-                op: Op::Div
-            })
+            Expr::Operation(Operation::new(
+                Expr::Number(Number(12)),
+                Expr::Number(Number(4)),
+                Op::Div
+            ))
             .eval(&env),
             Ok(Val::Number(3))
         )

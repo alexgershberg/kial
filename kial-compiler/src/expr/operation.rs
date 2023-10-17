@@ -9,6 +9,14 @@ pub(crate) struct Operation {
 }
 
 impl Operation {
+    pub(crate) fn new(lhs: Expr, rhs: Expr, op: Op) -> Self {
+        Operation {
+            lhs: Box::new(lhs),
+            rhs: Box::new(rhs),
+            op,
+        }
+    }
+
     pub(crate) fn parse(s: &str) -> Result<(&str, Self), String> {
         let (s, _) = utils::extract_whitespace(s);
 
@@ -22,14 +30,7 @@ impl Operation {
 
         let (s, _) = utils::extract_whitespace(s);
 
-        Ok((
-            s,
-            Self {
-                lhs: Box::new(lhs),
-                rhs: Box::new(rhs),
-                op,
-            },
-        ))
+        Ok((s, Operation::new(lhs, rhs, op)))
     }
 }
 
