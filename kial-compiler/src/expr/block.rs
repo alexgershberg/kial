@@ -81,7 +81,7 @@ mod tests {
     fn eval_simple_block() {
         /*
         {
-            let a = 10
+            let a = 10;
             a
         }
         */
@@ -126,7 +126,7 @@ mod tests {
     fn eval_block_with_single_assignment() {
         /*
         {
-            let a = 10
+            let a = 10;
         }
         */
         let env = Env::default();
@@ -146,9 +146,9 @@ mod tests {
     fn eval_block_with_multiple_assignments() {
         /*
         {
-            let a = 10
-            let b = 20
-            let c = 30
+            let a = 10;
+            let b = 20;
+            let c = 30;
         }
         */
         let env = Env::default();
@@ -224,7 +224,7 @@ mod tests {
         /*
         let baz = 2
         {
-            let foo = baz
+            let foo = baz;
             foo
         }
         */
@@ -318,8 +318,8 @@ mod tests {
         assert_eq!(
             Block::parse(
                 "{
-                let a = 20 / 4
-                let b = a
+                let a = 20 / 4;
+                let b = a;
                 a
                 }"
             ),
