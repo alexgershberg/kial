@@ -280,6 +280,37 @@ mod tests {
     }
 
     #[test]
+    fn parse_nested_blocks_with_one_stmt() {
+        assert_eq!(
+            Block::new(
+                "
+            {
+                { 5 }
+                { 10 }
+                { 20 }
+            }
+            "
+            ),
+            Ok((
+                "",
+                Block {
+                    stmts: vec![
+                        Stmt::Expr(Expr::Block(Block {
+                            stmts: vec![Stmt::Expr(Expr::Number(Number(5)))]
+                        })),
+                        Stmt::Expr(Expr::Block(Block {
+                            stmts: vec![Stmt::Expr(Expr::Number(Number(10)))]
+                        })),
+                        Stmt::Expr(Expr::Block(Block {
+                            stmts: vec![Stmt::Expr(Expr::Number(Number(20)))]
+                        }))
+                    ]
+                }
+            ))
+        )
+    }
+
+    #[test]
     fn parse_block_multiple_stmts() {
         assert_eq!(
             Block::new(
