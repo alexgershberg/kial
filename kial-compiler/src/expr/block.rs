@@ -49,10 +49,11 @@ impl Block {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::binding_def::BindingDef;
     use crate::expr::binding_usage::BindingUsage;
     use crate::expr::operation::Operation;
     use crate::expr::{Expr, Number, Op};
+    use crate::stmt::assignment::Assignment;
+    use crate::stmt::binding_def::BindingDef;
 
     #[test]
     fn eval_empty_block() {
@@ -174,55 +175,54 @@ mod tests {
         )
     }
 
-    // #[test]
-    // fn parse_complicated_block() {
-    //     /*
-    //     {
-    //         let a = 3000 + 500
-    //         let b = 350
-    //         a = a + b
-    //         a
-    //     }
-    //     */
-    //
-    //     assert_eq!(
-    //         Block::new(
-    //             "
-    //     {
-    //         let a = 3000 + 500
-    //         let b = 350
-    //         a = a + b  // This isn't supported yet!!
-    //         a
-    //     }
-    //     "
-    //         ),
-    //         Ok((
-    //             "",
-    //             Block {
-    //                 stmts: vec![
-    //                     Stmt::Expr(Expr::Operation(Operation {
-    //                         lhs: Box::new(Expr::Number(Number(3000))),
-    //                         rhs: Box::new(Expr::Number(Number(500))),
-    //                         op: Op::Add,
-    //                     })),
-    //                     Stmt::BindingDef(BindingDef {
-    //                         name: "b".to_string(),
-    //                         val: Expr::Number(Number(350))
-    //                     }),
-    //                     Stmt::BindingDef(BindingDef {
-    //                         name: "b".to_string(),
-    //                         val: Expr::Number(Number(350))
-    //                     }),
-    //                 ]
-    //             }
-    //         ))
-    //     )
-    // }
+    #[test]
+    fn parse_complicated_block() {
+        assert_eq!(
+            Block::parse(
+                "
+        {
+            let a = 3000 + 500;
+            let b = 350;
+            a = a + b;
+            a
+        }
+        "
+            ),
+            Ok((
+                "",
+                Block {
+                    stmts: vec![
+                        Stmt::BindingDef(BindingDef::new(
+                            "a".to_string(),
+                            Expr::Operation(Operation {
+                                lhs: Box::new(Expr::Number(Number(3000))),
+                                rhs: Box::new(Expr::Number(Number(500))),
+                                op: Op::Add,
+                            })
+                        )),
+                        Stmt::BindingDef(BindingDef {
+                            name: "b".to_string(),
+                            val: Expr::Number(Number(350))
+                        }),
+                        Stmt::Assignment(Assignment::new(
+                            "a",
+                            Expr::Operation(Operation::new(
+                                Expr::BindingUsage(BindingUsage::new("a")),
+                                Expr::BindingUsage(BindingUsage::new("b")),
+                                Op::Add
+                            ))
+                        )),
+                        Stmt::Expr(Expr::BindingUsage(BindingUsage::new("a")))
+                    ]
+                }
+            ))
+        )
+    }
 
     #[test]
     fn eval_block_with_outer_variables() {
         /*
-        let baz = 2
+        let baz = 2;
         {
             let foo = baz;
             foo

@@ -29,6 +29,10 @@ impl BindingDef {
         let (s, _) = utils::extract_whitespace(s);
 
         let (s, val) = Expr::parse(s)?;
+        let (s, _) = utils::extract_whitespace(s);
+
+        let s = utils::tag(";", s)?;
+        let (s, _) = utils::extract_whitespace(s);
 
         Ok((
             s,
@@ -56,7 +60,7 @@ mod tests {
     #[test]
     fn bind_single_number() {
         assert_eq!(
-            BindingDef::parse("let a = 10"),
+            BindingDef::parse("let a = 10;"),
             Ok((
                 "",
                 BindingDef {
@@ -67,7 +71,7 @@ mod tests {
         );
 
         assert_eq!(
-            BindingDef::parse("     let b = 20 "),
+            BindingDef::parse("     let b = 20 ; "),
             Ok((
                 "",
                 BindingDef::new("b".to_string(), Expr::Number(Number(20)))
@@ -78,7 +82,7 @@ mod tests {
     #[test]
     fn parse_bad_no_ident() {
         assert_eq!(
-            BindingDef::parse("let = 1+2"),
+            BindingDef::parse("let = 1+2;"),
             Err(String::from("Expected: identifier"))
         )
     }
@@ -86,7 +90,7 @@ mod tests {
     #[test]
     fn parse_bad_no_space_after_let() {
         assert_eq!(
-            BindingDef::parse("letabcd=1+2"),
+            BindingDef::parse("letabcd=1+2;"),
             Err(String::from("Expected: whitespace"))
         )
     }
@@ -94,7 +98,7 @@ mod tests {
     #[test]
     fn parse_binding_def_expression() {
         assert_eq!(
-            BindingDef::parse("let a = 10 / 5"),
+            BindingDef::parse("let a = 10 / 5;"),
             Ok((
                 "",
                 BindingDef {
