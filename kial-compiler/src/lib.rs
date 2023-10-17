@@ -16,7 +16,7 @@ mod val;
 pub struct Parse(Stmt);
 
 pub fn parse(s: &str) -> Result<Parse, String> {
-    let (_, stmt) = Stmt::new(s)?;
+    let (_, stmt) = Stmt::parse(s)?;
     Ok(Parse(stmt))
 }
 

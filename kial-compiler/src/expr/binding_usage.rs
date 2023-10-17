@@ -8,7 +8,7 @@ pub(crate) struct BindingUsage {
 }
 
 impl BindingUsage {
-    pub fn new(s: &str) -> Result<(&str, Self), String> {
+    pub fn parse(s: &str) -> Result<(&str, Self), String> {
         let (s, _) = utils::extract_whitespace(s);
         let (s, name) = utils::extract_ident(s)?;
         Ok((
@@ -57,7 +57,7 @@ mod tests {
     #[test]
     fn parse_binding_usage() {
         assert_eq!(
-            BindingUsage::new("abc"),
+            BindingUsage::parse("abc"),
             Ok((
                 "",
                 BindingUsage {
@@ -69,7 +69,7 @@ mod tests {
     #[test]
     fn parse_binding_usage_with_whitespace() {
         assert_eq!(
-            BindingUsage::new("\r\na"),
+            BindingUsage::parse("\r\na"),
             Ok((
                 "",
                 BindingUsage {
@@ -79,7 +79,7 @@ mod tests {
         );
 
         assert_eq!(
-            BindingUsage::new("     b"),
+            BindingUsage::parse("     b"),
             Ok((
                 "",
                 BindingUsage {

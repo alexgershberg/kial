@@ -10,10 +10,10 @@ pub(crate) enum Stmt {
 }
 
 impl Stmt {
-    pub(crate) fn new(s: &str) -> Result<(&str, Self), String> {
-        BindingDef::new(s)
+    pub(crate) fn parse(s: &str) -> Result<(&str, Self), String> {
+        BindingDef::parse(s)
             .map(|(s, binding_def)| (s, Self::BindingDef(binding_def)))
-            .or_else(|_| Expr::new(s).map(|(s, expr)| (s, Self::Expr(expr))))
+            .or_else(|_| Expr::parse(s).map(|(s, expr)| (s, Self::Expr(expr))))
     }
 
     pub(crate) fn eval(&self, env: &mut Env) -> Result<Val, String> {
@@ -37,7 +37,7 @@ mod tests {
     #[test]
     fn parse_block() {
         assert_eq!(
-            Stmt::new("{let a = 20 let b = 10 let c = b + a c}"),
+            Stmt::parse("{let a = 20 let b = 10 let c = b + a c}"),
             Ok((
                 "",
                 Stmt::Expr(Expr::Block(Block {
@@ -74,13 +74,13 @@ mod tests {
 
     #[test]
     fn parse_empty_statemnt() {
-        assert_eq!(Stmt::new("\n"), Err("Empty expression".to_string()));
+        assert_eq!(Stmt::parse("\n"), Err("Empty expression".to_string()));
     }
 
     #[test]
     fn parse_binding_def() {
         assert_eq!(
-            Stmt::new("let a = 5"),
+            Stmt::parse("let a = 5"),
             Ok((
                 "",
                 Stmt::BindingDef(BindingDef {
@@ -94,7 +94,7 @@ mod tests {
     #[test]
     fn parse_expression() {
         assert_eq!(
-            Stmt::new("10 * 15"),
+            Stmt::parse("10 * 15"),
             Ok((
                 "",
                 Stmt::Expr(Expr::Operation(Operation {
@@ -109,7 +109,7 @@ mod tests {
     #[test]
     fn parse_single_number() {
         assert_eq!(
-            Stmt::new("10"),
+            Stmt::parse("10"),
             Ok(("", Stmt::Expr(Expr::Number(Number(10)))))
         );
     }
@@ -117,7 +117,7 @@ mod tests {
     #[test]
     fn parse_assigment_of_expr_to_variable() {
         assert_eq!(
-            Stmt::new("let a = 10 * 15"),
+            Stmt::parse("let a = 10 * 15"),
             Ok((
                 "",
                 Stmt::BindingDef(BindingDef {
@@ -135,7 +135,7 @@ mod tests {
     #[test]
     fn parse_assigment_of_variable_to_variable() {
         assert_eq!(
-            Stmt::new("let a = b"),
+            Stmt::parse("let a = b"),
             Ok((
                 "",
                 Stmt::BindingDef(BindingDef {
@@ -151,7 +151,7 @@ mod tests {
     #[test]
     fn parse_assigment_of_multi_variable_expression_to_variable() {
         assert_eq!(
-            Stmt::new("let a = b / c"),
+            Stmt::parse("let a = b / c"),
             Ok((
                 "",
                 Stmt::BindingDef(BindingDef {

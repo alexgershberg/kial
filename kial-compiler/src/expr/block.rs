@@ -10,7 +10,7 @@ pub(crate) struct Block {
 }
 
 impl Block {
-    pub fn new(s: &str) -> Result<(&str, Self), String> {
+    pub fn parse(s: &str) -> Result<(&str, Self), String> {
         let (s, _) = utils::extract_whitespace(s);
         let s = utils::tag("{", s)?;
 
@@ -18,7 +18,7 @@ impl Block {
 
         let mut s = s;
         let mut stmts = Vec::new();
-        while let Ok((new_s, stmt)) = Stmt::new(s) {
+        while let Ok((new_s, stmt)) = Stmt::parse(s) {
             s = new_s;
             stmts.push(stmt)
         }
@@ -253,23 +253,26 @@ mod tests {
 
     #[test]
     fn parse_empty_block() {
-        assert_eq!(Block::new("{}"), Ok(("", Block { stmts: Vec::new() })))
+        assert_eq!(Block::parse("{}"), Ok(("", Block { stmts: Vec::new() })))
     }
 
     #[test]
     fn parse_empty_block_with_whitespace() {
         assert_eq!(
-            Block::new("{       }"),
+            Block::parse("{       }"),
             Ok(("", Block { stmts: Vec::new() }))
         );
 
-        assert_eq!(Block::new(" {   } "), Ok(("", Block { stmts: Vec::new() })))
+        assert_eq!(
+            Block::parse(" {   } "),
+            Ok(("", Block { stmts: Vec::new() }))
+        )
     }
 
     #[test]
     fn parse_block_with_one_stmt() {
         assert_eq!(
-            Block::new("{ 5 }"),
+            Block::parse("{ 5 }"),
             Ok((
                 "",
                 Block {
@@ -282,7 +285,7 @@ mod tests {
     #[test]
     fn parse_nested_blocks_with_one_stmt() {
         assert_eq!(
-            Block::new(
+            Block::parse(
                 "
             {
                 { 5 }
@@ -313,7 +316,7 @@ mod tests {
     #[test]
     fn parse_block_multiple_stmts() {
         assert_eq!(
-            Block::new(
+            Block::parse(
                 "{
                 let a = 20 / 4
                 let b = a

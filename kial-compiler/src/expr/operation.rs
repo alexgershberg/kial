@@ -1,4 +1,4 @@
-use crate::expr::{Expr, Number, Op};
+use crate::expr::{Expr, Op};
 use crate::utils;
 
 #[derive(Debug, PartialEq)]
@@ -9,16 +9,16 @@ pub(crate) struct Operation {
 }
 
 impl Operation {
-    pub(crate) fn new(s: &str) -> Result<(&str, Self), String> {
+    pub(crate) fn parse(s: &str) -> Result<(&str, Self), String> {
         let (s, _) = utils::extract_whitespace(s);
 
-        let (s, lhs) = Expr::new_without_operation(s)?;
+        let (s, lhs) = Expr::parse_without_operation(s)?;
 
         let (s, _) = utils::extract_whitespace(s);
-        let (s, op) = Op::new(s)?;
+        let (s, op) = Op::parse(s)?;
         let (s, _) = utils::extract_whitespace(s);
 
-        let (s, rhs) = Expr::new_without_operation(s)?;
+        let (s, rhs) = Expr::parse_without_operation(s)?;
 
         let (s, _) = utils::extract_whitespace(s);
 
@@ -39,6 +39,6 @@ mod tests {
 
     #[test]
     fn op_parse_gibberish_1() {
-        assert_eq!(Operation::new("-"), Err("Expected: digits".to_string()))
+        assert_eq!(Operation::parse("-"), Err("Expected: digits".to_string()))
     }
 }

@@ -13,7 +13,7 @@ pub mod operation;
 pub struct Number(pub i32);
 
 impl Number {
-    fn new(s: &str) -> Result<(&str, Self), String> {
+    fn parse(s: &str) -> Result<(&str, Self), String> {
         let (s, number) = utils::extract_digit(s)?;
         let number = number.parse().unwrap();
 
@@ -30,7 +30,7 @@ pub enum Op {
 }
 
 impl Op {
-    pub fn new(s: &str) -> Result<(&str, Self), String> {
+    pub fn parse(s: &str) -> Result<(&str, Self), String> {
         utils::tag("+", s)
             .map(|s| (s, Self::Add))
             .or_else(|_| utils::tag("-", s).map(|s| (s, Self::Sub)))
@@ -48,56 +48,56 @@ pub(crate) enum Expr {
 }
 
 impl Expr {
-    fn new_number(s: &str) -> Result<(&str, Self), String> {
-        Number::new(s).map(|(s, num)| (s, Self::Number(num)))
+    fn parse_number(s: &str) -> Result<(&str, Self), String> {
+        Number::parse(s).map(|(s, num)| (s, Self::Number(num)))
     }
 
-    fn new_operation(s: &str) -> Result<(&str, Self), String> {
-        Operation::new(s).map(|(s, op)| (s, Self::Operation(op)))
+    fn parse_operation(s: &str) -> Result<(&str, Self), String> {
+        Operation::parse(s).map(|(s, op)| (s, Self::Operation(op)))
     }
 
-    fn new_binding_usage(s: &str) -> Result<(&str, Self), String> {
-        let (s, binding_usage) = BindingUsage::new(s)?;
+    fn parse_binding_usage(s: &str) -> Result<(&str, Self), String> {
+        let (s, binding_usage) = BindingUsage::parse(s)?;
 
         Ok((s, Self::BindingUsage(binding_usage)))
     }
 
-    fn new_block(s: &str) -> Result<(&str, Self), String> {
-        let (s, block) = Block::new(s)?;
+    fn parse_block(s: &str) -> Result<(&str, Self), String> {
+        let (s, block) = Block::parse(s)?;
 
         Ok((s, Self::Block(block)))
     }
 
-    pub(crate) fn new_without_operation(s: &str) -> Result<(&str, Self), String> {
+    pub(crate) fn parse_without_operation(s: &str) -> Result<(&str, Self), String> {
         let s = s.trim();
 
         if s.is_empty() {
             return Err("Empty expression".to_string());
         }
 
-        let res1 = Self::new_binding_usage(s);
+        let res1 = Self::parse_binding_usage(s);
 
-        let res2 = res1.or_else(|_| Self::new_block(s));
+        let res2 = res1.or_else(|_| Self::parse_block(s));
 
-        let res3 = res2.or_else(|_| Self::new_number(s));
+        let res3 = res2.or_else(|_| Self::parse_number(s));
 
         res3
     }
 
-    pub(crate) fn new(s: &str) -> Result<(&str, Self), String> {
+    pub(crate) fn parse(s: &str) -> Result<(&str, Self), String> {
         let s = s.trim();
 
         if s.is_empty() {
             return Err("Empty expression".to_string());
         }
 
-        let res1 = Self::new_operation(s);
+        let res1 = Self::parse_operation(s);
 
-        let res2 = res1.or_else(|_| Self::new_binding_usage(s));
+        let res2 = res1.or_else(|_| Self::parse_binding_usage(s));
 
-        let res3 = res2.or_else(|_| Self::new_block(s));
+        let res3 = res2.or_else(|_| Self::parse_block(s));
 
-        let res4 = res3.or_else(|_| Self::new_number(s));
+        let res4 = res3.or_else(|_| Self::parse_number(s));
 
         res4
     }
@@ -138,37 +138,37 @@ mod tests {
 
     #[test]
     fn expr_parse_gibberish_1() {
-        assert_eq!(Expr::new("-"), Err("Expected: digits".to_string()))
+        assert_eq!(Expr::parse("-"), Err("Expected: digits".to_string()))
     }
 
     #[test]
     fn parse_single_bracket() {
-        assert_eq!(Expr::new("}"), Err("Expected: digits".to_string()))
+        assert_eq!(Expr::parse("}"), Err("Expected: digits".to_string()))
     }
 
     #[test]
     fn parse_empty_expr() {
-        assert_eq!(Expr::new(""), Err("Empty expression".to_string()))
+        assert_eq!(Expr::parse(""), Err("Empty expression".to_string()))
     }
 
     #[test]
     fn parse_whitespace_expr() {
-        assert_eq!(Expr::new("\r"), Err("Empty expression".to_string()));
-        assert_eq!(Expr::new("\t"), Err("Empty expression".to_string()));
-        assert_eq!(Expr::new(" "), Err("Empty expression".to_string()));
+        assert_eq!(Expr::parse("\r"), Err("Empty expression".to_string()));
+        assert_eq!(Expr::parse("\t"), Err("Empty expression".to_string()));
+        assert_eq!(Expr::parse(" "), Err("Empty expression".to_string()));
 
         assert_eq!(
-            Expr::new("\r\n     \r\n"),
+            Expr::parse("\r\n     \r\n"),
             Err("Empty expression".to_string())
         );
 
-        assert_eq!(Expr::new("\r\n"), Err("Empty expression".to_string()))
+        assert_eq!(Expr::parse("\r\n"), Err("Empty expression".to_string()))
     }
 
     #[test]
     fn parse_binding_usage() {
         assert_eq!(
-            Expr::new("bar"),
+            Expr::parse("bar"),
             Ok((
                 "",
                 Expr::BindingUsage(BindingUsage {
@@ -181,7 +181,7 @@ mod tests {
     #[test]
     fn parse_op_on_variables_usage() {
         assert_eq!(
-            Expr::new("a * b"),
+            Expr::parse("a * b"),
             Ok((
                 "",
                 Expr::Operation(Operation {
@@ -201,42 +201,42 @@ mod tests {
 
     #[test]
     fn parse_number() {
-        assert_eq!(Number::new("128"), Ok(("", Number(128))));
+        assert_eq!(Number::parse("128"), Ok(("", Number(128))));
     }
 
     #[test]
     fn parse_number_whitespace() {
-        assert_eq!(Number::new(""), Err("Expected: digits".to_string()));
+        assert_eq!(Number::parse(""), Err("Expected: digits".to_string()));
     }
 
     #[test]
     fn parse_number_gibberish() {
-        assert_eq!(Number::new("-"), Err("Expected: digits".to_string()));
+        assert_eq!(Number::parse("-"), Err("Expected: digits".to_string()));
     }
 
     #[test]
     fn parse_ops() {
-        assert_eq!(Op::new("+"), Ok(("", Op::Add)));
-        assert_eq!(Op::new("-"), Ok(("", Op::Sub)));
-        assert_eq!(Op::new("*"), Ok(("", Op::Mul)));
-        assert_eq!(Op::new("/"), Ok(("", Op::Div)));
+        assert_eq!(Op::parse("+"), Ok(("", Op::Add)));
+        assert_eq!(Op::parse("-"), Ok(("", Op::Sub)));
+        assert_eq!(Op::parse("*"), Ok(("", Op::Mul)));
+        assert_eq!(Op::parse("/"), Ok(("", Op::Div)));
     }
 
     #[test]
     fn parse_complex_ops() {
-        assert_eq!(Op::new("+ 20"), Ok((" 20", Op::Add)));
+        assert_eq!(Op::parse("+ 20"), Ok((" 20", Op::Add)));
     }
 
     #[test]
     fn parse_empty_ops() {
-        assert_eq!(Op::new(""), Err(String::from("Expected: /")));
-        assert_eq!(Op::new("20"), Err(String::from("Expected: /")));
+        assert_eq!(Op::parse(""), Err(String::from("Expected: /")));
+        assert_eq!(Op::parse("20"), Err(String::from("Expected: /")));
     }
 
     #[test]
     fn parse_expression_as_operation() {
         assert_eq!(
-            Expr::new("1+2"),
+            Expr::parse("1+2"),
             Ok((
                 "",
                 Expr::Operation(Operation {
@@ -248,7 +248,7 @@ mod tests {
         );
 
         assert_eq!(
-            Expr::new("    \r\n    120     +     350"),
+            Expr::parse("    \r\n    120     +     350"),
             Ok((
                 "",
                 Expr::Operation(Operation {
@@ -260,7 +260,7 @@ mod tests {
         );
 
         assert_eq!(
-            Expr::new("5 + -10"),
+            Expr::parse("5 + -10"),
             Ok((
                 "",
                 Expr::Operation(Operation {
@@ -274,7 +274,7 @@ mod tests {
 
     #[test]
     fn parse_expression_as_number() {
-        assert_eq!(Expr::new("456"), Ok(("", Expr::Number(Number(456)))));
+        assert_eq!(Expr::parse("456"), Ok(("", Expr::Number(Number(456)))));
     }
 
     #[test]
