@@ -68,7 +68,29 @@ impl Expr {
         Ok((s, Self::Block(block)))
     }
 
+    pub(crate) fn new_without_operation(s: &str) -> Result<(&str, Self), String> {
+        let s = s.trim();
+
+        if s.is_empty() {
+            return Err("Empty expression".to_string());
+        }
+
+        let res1 = Self::new_binding_usage(s);
+
+        let res2 = res1.or_else(|_| Self::new_block(s));
+
+        let res3 = res2.or_else(|_| Self::new_number(s));
+
+        res3
+    }
+
     pub(crate) fn new(s: &str) -> Result<(&str, Self), String> {
+        let s = s.trim();
+
+        if s.is_empty() {
+            return Err("Empty expression".to_string());
+        }
+
         let res1 = Self::new_operation(s);
 
         let res2 = res1.or_else(|_| Self::new_binding_usage(s));
@@ -117,6 +139,25 @@ mod tests {
     #[test]
     fn parse_single_bracket() {
         assert_eq!(Expr::new("}"), Err("Expected: digits".to_string()))
+    }
+
+    #[test]
+    fn parse_empty_expr() {
+        assert_eq!(Expr::new(""), Err("Empty expression".to_string()))
+    }
+
+    #[test]
+    fn parse_whitespace_expr() {
+        assert_eq!(Expr::new("\r"), Err("Empty expression".to_string()));
+        assert_eq!(Expr::new("\t"), Err("Empty expression".to_string()));
+        assert_eq!(Expr::new(" "), Err("Empty expression".to_string()));
+
+        assert_eq!(
+            Expr::new("\r\n     \r\n"),
+            Err("Empty expression".to_string())
+        );
+
+        assert_eq!(Expr::new("\r\n"), Err("Empty expression".to_string()))
     }
 
     #[test]

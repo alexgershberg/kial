@@ -14,6 +14,7 @@ pub(crate) fn extract_digit(s: &str) -> Result<(&str, &str), String> {
 }
 
 pub(crate) fn extract_whitespace(s: &str) -> (&str, &str) {
+    // FIXME This can just be: let s = s.strip();
     take_while(|c| c.is_ascii_whitespace(), s)
 }
 

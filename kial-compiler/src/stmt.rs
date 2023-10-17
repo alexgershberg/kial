@@ -28,9 +28,54 @@ impl Stmt {
 mod tests {
     use crate::binding_def::BindingDef;
     use crate::expr::binding_usage::BindingUsage;
+    use crate::expr::block::Block;
     use crate::expr::operation::Operation;
     use crate::expr::{Expr, Number, Op};
     use crate::stmt::Stmt;
+
+    // {let a = 20 let b = 10 let c = b + a c}
+    #[test]
+    fn parse_block() {
+        assert_eq!(
+            Stmt::new("{let a = 20 let b = 10 let c = b + a c}"),
+            Ok((
+                "",
+                Stmt::Expr(Expr::Block(Block {
+                    stmts: vec![
+                        Stmt::BindingDef(BindingDef {
+                            name: "a".to_string(),
+                            val: Expr::Number(Number(20))
+                        }),
+                        Stmt::BindingDef(BindingDef {
+                            name: "b".to_string(),
+                            val: Expr::Number(Number(10))
+                        }),
+                        Stmt::BindingDef(BindingDef {
+                            name: "c".to_string(),
+                            val: Expr::Operation(Operation {
+                                lhs: Box::new(Expr::BindingUsage(BindingUsage {
+                                    name: "b".to_string()
+                                })),
+
+                                rhs: Box::new(Expr::BindingUsage(BindingUsage {
+                                    name: "a".to_string()
+                                })),
+                                op: Op::Add,
+                            })
+                        }),
+                        Stmt::Expr(Expr::BindingUsage(BindingUsage {
+                            name: "c".to_string()
+                        }))
+                    ]
+                }))
+            ))
+        );
+    }
+
+    #[test]
+    fn parse_empty_statemnt() {
+        assert_eq!(Stmt::new("\n"), Err("Empty expression".to_string()));
+    }
 
     #[test]
     fn parse_binding_def() {

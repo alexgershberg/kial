@@ -11,24 +11,15 @@ pub(crate) struct Operation {
 
 impl Operation {
     pub(crate) fn new(s: &str) -> Result<(&str, Self), String> {
-        if s.starts_with("}") {
-            // TODO: Try re-running the tests without this check?
-            return Err(format!("Invalid symbol"));
-        }
-
         let (s, _) = utils::extract_whitespace(s);
 
-        let (s, lhs) = Expr::new_number(s)
-            .or_else(|_| Expr::new_binding_usage(s))
-            .or_else(|_| Expr::new(s))?;
+        let (s, lhs) = Expr::new_without_operation(s)?;
 
         let (s, _) = utils::extract_whitespace(s);
         let (s, op) = Op::new(s)?;
         let (s, _) = utils::extract_whitespace(s);
 
-        let (s, rhs) = Expr::new_number(s)
-            .or_else(|_| Expr::new_binding_usage(s))
-            .or_else(|_| Expr::new(s))?;
+        let (s, rhs) = Expr::new_without_operation(s)?;
 
         let (s, _) = utils::extract_whitespace(s);
 
@@ -41,4 +32,10 @@ impl Operation {
             },
         ))
     }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn parse_basic() {}
 }

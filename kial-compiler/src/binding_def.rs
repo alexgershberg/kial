@@ -11,6 +11,8 @@ pub(crate) struct BindingDef {
 
 impl BindingDef {
     pub fn new(s: &str) -> Result<(&str, Self), String> {
+        let (s, _) = utils::extract_whitespace(s);
+
         let s = utils::tag("let", s)?;
 
         let (s, _) = utils::extract_whitespace1(s)?;
@@ -56,6 +58,17 @@ mod tests {
                 BindingDef {
                     name: "a".to_string(),
                     val: Expr::Number(Number(10)),
+                }
+            ))
+        );
+
+        assert_eq!(
+            BindingDef::new("     let b = 20 "),
+            Ok((
+                "",
+                BindingDef {
+                    name: "b".to_string(),
+                    val: Expr::Number(Number(20)),
                 }
             ))
         )

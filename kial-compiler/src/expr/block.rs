@@ -191,7 +191,7 @@ mod tests {
     //     {
     //         let a = 3000 + 500
     //         let b = 350
-    //         a = a + b
+    //         a = a + b  // This isn't supported yet!!
     //         a
     //     }
     //     "
@@ -199,11 +199,21 @@ mod tests {
     //         Ok((
     //             "",
     //             Block {
-    //                 stmts: vec![Stmt::Expr(Operation {
-    //                     lhs: Number(3000),
-    //                     rhs: Number(500),
-    //                     op: Op::Add,
-    //                 })],
+    //                 stmts: vec![
+    //                     Stmt::Expr(Expr::Operation(Operation {
+    //                         lhs: Box::new(Expr::Number(Number(3000))),
+    //                         rhs: Box::new(Expr::Number(Number(500))),
+    //                         op: Op::Add,
+    //                     })),
+    //                     Stmt::BindingDef(BindingDef {
+    //                         name: "b".to_string(),
+    //                         val: Expr::Number(Number(350))
+    //                     }),
+    //                     Stmt::BindingDef(BindingDef {
+    //                         name: "b".to_string(),
+    //                         val: Expr::Number(Number(350))
+    //                     }),
+    //                 ]
     //             }
     //         ))
     //     )
