@@ -9,7 +9,9 @@ fn main() {
         if let Ok(_) = stdin.read_line(&mut input) {
             match kial_compiler::parse(input.trim()) {
                 Ok(parse) => {
-                    println!("> {parse:#?}");
+                    // println!("> {parse:#?}");
+                    let res = parse.eval(&mut env);
+                    println!("> {res:?}");
                 }
                 Err(e) => {
                     println!("> {e}")

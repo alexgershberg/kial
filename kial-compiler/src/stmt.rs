@@ -87,6 +87,14 @@ mod tests {
     }
 
     #[test]
+    fn parse_missing_semicolon() {
+        assert_eq!(
+            Stmt::parse("let count = 10"),
+            Err("Expected: ;".to_string())
+        );
+    }
+
+    #[test]
     fn parse_binding_def() {
         assert_eq!(
             Stmt::parse("let a = 5;"),

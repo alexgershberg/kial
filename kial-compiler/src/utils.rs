@@ -30,8 +30,14 @@ pub(crate) fn extract_whitespace1(s: &str) -> Result<(&str, &str), String> {
 }
 
 pub(crate) fn extract_ident(s: &str) -> Result<(&str, &str), String> {
+    let s = s.trim();
+
     if s.starts_with(|c: char| c.is_numeric()) {
         return Err(String::from("Expected: identifier"));
+    }
+
+    if s.starts_with("let") {
+        return Err("Error: 'let' is a reserved keyword".to_string());
     }
 
     let pred = |_: usize, c: char| -> bool { c.is_ascii_alphanumeric() || c == '_' };
