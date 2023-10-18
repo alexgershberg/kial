@@ -10,8 +10,11 @@ pub(crate) struct BindingDef {
 }
 
 impl BindingDef {
-    pub(crate) fn new(name: String, val: Expr) -> Self {
-        BindingDef { name, val }
+    pub(crate) fn new(name: &str, val: Expr) -> Self {
+        BindingDef {
+            name: name.to_string(),
+            val,
+        }
     }
 
     pub(crate) fn parse(s: &str) -> Result<(&str, Self), String> {
@@ -72,10 +75,7 @@ mod tests {
 
         assert_eq!(
             BindingDef::parse("     let b = 20 ; "),
-            Ok((
-                "",
-                BindingDef::new("b".to_string(), Expr::Number(Number(20)))
-            ))
+            Ok(("", BindingDef::new("b", Expr::Number(Number(20)))))
         )
     }
 

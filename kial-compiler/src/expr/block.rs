@@ -10,6 +10,10 @@ pub(crate) struct Block {
 }
 
 impl Block {
+    pub(crate) fn new(stmts: Vec<Stmt>) -> Self {
+        Self { stmts }
+    }
+
     pub fn parse(s: &str) -> Result<(&str, Self), String> {
         let (s, _) = utils::extract_whitespace(s);
         let s = utils::tag("{", s)?;
@@ -193,17 +197,14 @@ mod tests {
                 Block {
                     stmts: vec![
                         Stmt::BindingDef(BindingDef::new(
-                            "a".to_string(),
+                            "a",
                             Expr::Operation(Operation {
                                 lhs: Box::new(Expr::Number(Number(3000))),
                                 rhs: Box::new(Expr::Number(Number(500))),
                                 op: Op::Add,
                             })
                         )),
-                        Stmt::BindingDef(BindingDef {
-                            name: "b".to_string(),
-                            val: Expr::Number(Number(350))
-                        }),
+                        Stmt::BindingDef(BindingDef::new("b", Expr::Number(Number(350)))),
                         Stmt::Assignment(Assignment::new(
                             "a",
                             Expr::Operation(Operation::new(
@@ -226,7 +227,7 @@ mod tests {
         {
             let foo = baz;
             foo
-        }
+        } t
         */
 
         let mut env = Env::default();
