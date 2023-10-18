@@ -1,3 +1,4 @@
+use std::io::Write;
 use kial_compiler::env::Env;
 
 fn main() {
@@ -6,17 +7,28 @@ fn main() {
     let stdin = std::io::stdin();
     loop {
         let mut input = String::new();
+        print!("> ");
+        std::io::stdout().flush().unwrap();
         if let Ok(_) = stdin.read_line(&mut input) {
-            match kial_compiler::parse(input.trim()) {
+            let input = input.trim();
+            if input.is_empty() {
+                continue;
+            }
+
+            match kial_compiler::parse(input) {
                 Ok(parse) => {
-                    // println!("> {parse:#?}");
-                    let res = parse.eval(&mut env);
-                    println!("> {res:?}");
+                    match parse.eval(&mut env) {
+                        Ok(val) => println!("{val}"),
+                        Err(e) => {
+                            println!("1: {e}")
+                        }
+                    }
                 }
                 Err(e) => {
-                    println!("> {e}")
+                    println!("2: {e}")
                 }
             }
         }
+
     }
 }
