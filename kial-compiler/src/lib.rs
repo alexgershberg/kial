@@ -1,5 +1,3 @@
-extern crate core;
-
 use crate::env::Env;
 use crate::stmt::Stmt;
 use crate::val::Val;

@@ -22,6 +22,20 @@ impl Number {
 }
 
 #[derive(Debug, PartialEq)]
+pub(crate) struct Str(String);
+
+impl Str {
+    fn parse(s: &str) -> Result<(&str, Self), String> {
+        let (s, _) = utils::extract_whitespace(s);
+        let s = utils::tag("\"", s)?;
+        let (s, str) = utils::extract_string(s);
+        let s = utils::tag("\"", s)?;
+        let (s, _) = utils::extract_whitespace(s);
+        Ok((s, Self(str.to_string())))
+    }
+}
+
+#[derive(Debug, PartialEq)]
 pub enum Op {
     Add,
     Sub,
@@ -42,12 +56,21 @@ impl Op {
 #[derive(Debug, PartialEq)]
 pub(crate) enum Expr {
     Number(Number),
+    Str(Str),
     Operation(Operation),
     BindingUsage(BindingUsage),
     Block(Block),
 }
 
 impl Expr {
+    fn parse_data(s: &str) -> Result<(&str, Self), String> {
+        Self::parse_string(s).or_else(|_| Self::parse_number(s))
+    }
+
+    fn parse_string(s: &str) -> Result<(&str, Self), String> {
+        Str::parse(s).map(|(s, str)| (s, Self::Str(str)))
+    }
+
     fn parse_number(s: &str) -> Result<(&str, Self), String> {
         Number::parse(s).map(|(s, num)| (s, Self::Number(num)))
     }
@@ -79,7 +102,7 @@ impl Expr {
 
         let res2 = res1.or_else(|_| Self::parse_block(s));
 
-        let res3 = res2.or_else(|_| Self::parse_number(s));
+        let res3 = res2.or_else(|_| Self::parse_data(s));
 
         res3
     }
@@ -97,7 +120,7 @@ impl Expr {
 
         let res3 = res2.or_else(|_| Self::parse_block(s));
 
-        let res4 = res3.or_else(|_| Self::parse_number(s));
+        let res4 = res3.or_else(|_| Self::parse_data(s));
 
         res4
     }
@@ -107,7 +130,7 @@ impl Expr {
             Self::BindingUsage(binding_usage) => binding_usage.eval(env),
             Self::Block(block) => block.eval(env),
             Self::Number(Number(num)) => Ok(Val::Number(*num)),
-
+            Self::Str(Str(str)) => Ok(Val::Str(str.clone())),
             Self::Operation(Operation { lhs, rhs, op }) => {
                 let lhs = lhs.eval(env)?;
                 let rhs = rhs.eval(env)?;
@@ -212,6 +235,27 @@ mod tests {
     #[test]
     fn parse_number_gibberish() {
         assert_eq!(Number::parse("-"), Err("Expected: digits".to_string()));
+    }
+
+    #[test]
+    fn parse_string_short() {
+        assert_eq!(
+            Str::parse(r#""hello world!""#),
+            Ok(("", Str("hello world!".to_string())))
+        );
+    }
+
+    #[test]
+    fn parse_string_empty() {
+        assert_eq!(Str::parse(r#""""#), Ok(("", Str("".to_string()))));
+    }
+
+    #[test]
+    fn parse_string_whitespace() {
+        assert_eq!(
+            Str::parse("\"\r \n \t \""),
+            Ok(("", Str("\r \n \t ".to_string())))
+        );
     }
 
     #[test]

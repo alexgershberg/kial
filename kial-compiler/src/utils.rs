@@ -21,6 +21,10 @@ pub(crate) fn extract_whitespace(s: &str) -> (&str, &str) {
     take_while(|_, c| c.is_ascii_whitespace(), s)
 }
 
+pub(crate) fn extract_string(s: &str) -> (&str, &str) {
+    take_while(|_, c| c != '"', s)
+}
+
 pub(crate) fn extract_whitespace1(s: &str) -> Result<(&str, &str), String> {
     take_while1(
         |_, c| c.is_ascii_whitespace(),
@@ -160,5 +164,18 @@ mod test {
     fn extract_one_digit() {
         assert_eq!(extract_digit("1+2"), Ok(("+2", "1")));
         assert_eq!(extract_digit("1 + 2"), Ok((" + 2", "1")));
+    }
+
+    #[test]
+    fn extract_long_string() {
+        assert_eq!(
+            extract_string(
+                "hello, world! This is a very long message. I guess I could've used lorem ipsum..."
+            ),
+            (
+                "",
+                "hello, world! This is a very long message. I guess I could've used lorem ipsum..."
+            )
+        );
     }
 }

@@ -3,6 +3,7 @@ use std::fmt::{Display, Formatter};
 #[derive(Debug, Clone, PartialEq)]
 pub enum Val {
     Number(i32),
+    Str(String),
     Unit,
 }
 
@@ -13,6 +14,7 @@ impl Display for Val {
                 format!("{num}")
             }
             Val::Unit => "()".to_string(),
+            Val::Str(s) => format!(r#""{s}""#),
         };
 
         write!(f, "{}", repr)
