@@ -10,7 +10,7 @@ pub mod block;
 pub mod operation;
 
 #[derive(Debug, PartialEq)]
-pub struct Number(pub i32);
+pub struct Number(pub(crate) i32);
 
 impl Number {
     fn parse(s: &str) -> Result<(&str, Self), String> {
@@ -22,7 +22,7 @@ impl Number {
 }
 
 #[derive(Debug, PartialEq)]
-pub(crate) struct Str(String);
+pub(crate) struct Str(pub(crate) String);
 
 impl Str {
     fn parse(s: &str) -> Result<(&str, Self), String> {
@@ -135,20 +135,28 @@ impl Expr {
                 let lhs = lhs.eval(env)?;
                 let rhs = rhs.eval(env)?;
 
-                if let (Val::Number(lhs), Val::Number(rhs)) = (&lhs, &rhs) {
-                    let result = match op {
-                        Op::Add => lhs + rhs,
-                        Op::Sub => lhs - rhs,
-                        Op::Mul => lhs * rhs,
-                        Op::Div => lhs / rhs,
-                    };
+                match (&lhs, &rhs) {
+                    (Val::Number(lhs), Val::Number(rhs)) => {
+                        let result = match op {
+                            Op::Add => lhs + rhs,
+                            Op::Sub => lhs - rhs,
+                            Op::Mul => lhs * rhs,
+                            Op::Div => lhs / rhs,
+                        };
 
-                    return Ok(Val::Number(result));
+                        Ok(Val::Number(result))
+                    }
+
+                    (Val::Str(lhs), Val::Str(rhs)) => match op {
+                        Op::Add => Ok(Val::Str(format!("{lhs}{rhs}"))),
+                        _ => Err(format!(
+                            "Unsupported operation, lhs: {lhs:?} | rhs: {rhs:?} | op: {op:?}"
+                        )),
+                    },
+                    _ => Err(format!(
+                        "Unsupported operation, lhs: {lhs:?} | rhs: {rhs:?} | op: {op:?}"
+                    )),
                 }
-
-                Err(format!(
-                    "Unsupported operation, lhs: {lhs:?} | rhs: {rhs:?} | op: {op:?}"
-                ))
             }
         }
     }

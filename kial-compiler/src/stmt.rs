@@ -51,7 +51,7 @@ mod tests {
     use crate::expr::binding_usage::BindingUsage;
     use crate::expr::block::Block;
     use crate::expr::operation::Operation;
-    use crate::expr::{Expr, Number, Op};
+    use crate::expr::{Expr, Number, Op, Str};
     use crate::stmt::binding_def::BindingDef;
     use crate::stmt::Stmt;
 
@@ -158,6 +158,20 @@ mod tests {
                         rhs: Box::new(Expr::Number(Number(15))),
                         op: Op::Mul
                     })
+                })
+            ))
+        );
+    }
+
+    #[test]
+    fn parse_assigment_of_string_to_variable() {
+        assert_eq!(
+            Stmt::parse(r#"let a = "hello world";"#),
+            Ok((
+                "",
+                Stmt::BindingDef(BindingDef {
+                    name: "a".to_string(),
+                    val: Expr::Str(Str("hello world".to_string()))
                 })
             ))
         );

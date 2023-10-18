@@ -55,7 +55,7 @@ mod tests {
     use super::*;
     use crate::expr::binding_usage::BindingUsage;
     use crate::expr::operation::Operation;
-    use crate::expr::{Expr, Number, Op};
+    use crate::expr::{Expr, Number, Op, Str};
     use crate::stmt::assignment::Assignment;
     use crate::stmt::binding_def::BindingDef;
 
@@ -344,6 +344,88 @@ mod tests {
                         }),
                         Stmt::Expr(Expr::BindingUsage(BindingUsage {
                             name: "a".to_string(),
+                        }))
+                    ]
+                }
+            ))
+        )
+    }
+
+    #[test]
+    fn parse_block_multiple_stmts_with_string() {
+        assert_eq!(
+            Block::parse(
+                r#"{
+                let a = "hello";
+                let b = a;
+                b
+                }"#
+            ),
+            Ok((
+                "",
+                Block {
+                    stmts: vec![
+                        Stmt::BindingDef(BindingDef {
+                            name: "a".to_string(),
+                            val: Expr::Str(Str("hello".to_string()))
+                        }),
+                        Stmt::BindingDef(BindingDef {
+                            name: "b".to_string(),
+                            val: Expr::BindingUsage(BindingUsage {
+                                name: "a".to_string(),
+                            })
+                        }),
+                        Stmt::Expr(Expr::BindingUsage(BindingUsage {
+                            name: "b".to_string(),
+                        }))
+                    ]
+                }
+            ))
+        )
+    }
+
+    #[test]
+    fn parse_block_multiple_stmts_with_string_concatenation() {
+        assert_eq!(
+            Block::parse(
+                r#"{
+                let a = "hello";
+                let b = "world";
+                let c = a + " ";
+                c = c + b;
+                c
+                }"#
+            ),
+            Ok((
+                "",
+                Block {
+                    stmts: vec![
+                        Stmt::BindingDef(BindingDef {
+                            name: "a".to_string(),
+                            val: Expr::Str(Str("hello".to_string()))
+                        }),
+                        Stmt::BindingDef(BindingDef {
+                            name: "b".to_string(),
+                            val: Expr::Str(Str("world".to_string()))
+                        }),
+                        Stmt::BindingDef(BindingDef {
+                            name: "c".to_string(),
+                            val: Expr::Operation(Operation::new(
+                                Expr::BindingUsage(BindingUsage::new("a")),
+                                Expr::Str(Str(" ".to_string())),
+                                Op::Add
+                            ))
+                        }),
+                        Stmt::Assignment(Assignment::new(
+                            "c",
+                            Expr::Operation(Operation::new(
+                                Expr::BindingUsage(BindingUsage::new("c")),
+                                Expr::BindingUsage(BindingUsage::new("b")),
+                                Op::Add
+                            ))
+                        )),
+                        Stmt::Expr(Expr::BindingUsage(BindingUsage {
+                            name: "c".to_string(),
                         }))
                     ]
                 }
