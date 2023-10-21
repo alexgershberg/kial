@@ -8,6 +8,7 @@ pub mod stmt;
 pub mod env;
 mod utils;
 mod val;
+mod lexer;
 
 #[derive(Debug)]
 pub struct Parse(Stmt);
