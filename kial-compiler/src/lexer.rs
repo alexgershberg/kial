@@ -153,6 +153,7 @@ fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
     })
 }
 
+#[rustfmt::skip::macros(assert_eq)]
 #[cfg(test)]
 mod tests {
     use crate::lexer::TokenKind::*;
@@ -163,70 +164,31 @@ mod tests {
         let text = "func main() {}";
         let mut token_iter = tokenize(text);
 
-        assert_eq!(
-            token_iter.next(),
-            Some(Token {
-                kind: Ident,
-                len: 4
-            })
-        );
+        assert_eq!(token_iter.next(), Some(Token { kind: Ident, len: 4 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Ident, len: 4 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: OpenParen, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: CloseParen, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: OpenBrace, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: CloseBrace, len: 1 }));
+        assert_eq!(token_iter.next(), None);
+    }
 
-        assert_eq!(
-            token_iter.next(),
-            Some(Token {
-                kind: Whitespace,
-                len: 1
-            })
-        );
+    #[test]
+    fn tokenize_simple_program() {
+        let text =
+            "func main() {\nlet word1 = \"hello\";\nlet word2 = \" world!\";\n\"word1 + word2}";
+        let mut token_iter = tokenize(text);
 
-        assert_eq!(
-            token_iter.next(),
-            Some(Token {
-                kind: Ident,
-                len: 4
-            })
-        );
-
-        assert_eq!(
-            token_iter.next(),
-            Some(Token {
-                kind: OpenParen,
-                len: 1
-            })
-        );
-
-        assert_eq!(
-            token_iter.next(),
-            Some(Token {
-                kind: CloseParen,
-                len: 1
-            })
-        );
-
-        assert_eq!(
-            token_iter.next(),
-            Some(Token {
-                kind: Whitespace,
-                len: 1
-            })
-        );
-
-        assert_eq!(
-            token_iter.next(),
-            Some(Token {
-                kind: OpenBrace,
-                len: 1
-            })
-        );
-
-        assert_eq!(
-            token_iter.next(),
-            Some(Token {
-                kind: CloseBrace,
-                len: 1
-            })
-        );
-
+        assert_eq!(token_iter.next(), Some(Token { kind: Ident, len: 4 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Ident, len: 4 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: OpenParen, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: CloseParen, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: OpenBrace, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: CloseBrace, len: 1 }));
         assert_eq!(token_iter.next(), None);
     }
 
@@ -235,22 +197,8 @@ mod tests {
         let s = "987654321 ";
         let mut token_iter = tokenize(s);
 
-        assert_eq!(
-            token_iter.next(),
-            Some(Token {
-                kind: Literal,
-                len: 9
-            })
-        );
-
-        assert_eq!(
-            token_iter.next(),
-            Some(Token {
-                kind: Whitespace,
-                len: 1
-            })
-        );
-
+        assert_eq!(token_iter.next(), Some(Token { kind: Literal, len: 9 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, len: 1 }));
         assert_eq!(token_iter.next(), None);
     }
 
@@ -259,62 +207,13 @@ mod tests {
         let s = r#"let text = "hello world";"#;
         let mut token_iter = tokenize(s);
 
-        assert_eq!(
-            token_iter.next(),
-            Some(Token {
-                kind: Ident,
-                len: 3
-            })
-        );
-
-        assert_eq!(
-            token_iter.next(),
-            Some(Token {
-                kind: Whitespace,
-                len: 1
-            })
-        );
-
-        assert_eq!(
-            token_iter.next(),
-            Some(Token {
-                kind: Ident,
-                len: 4
-            })
-        );
-
-        assert_eq!(
-            token_iter.next(),
-            Some(Token {
-                kind: Whitespace,
-                len: 1
-            })
-        );
-
-        assert_eq!(
-            token_iter.next(),
-            Some(Token {
-                kind: Equals,
-                len: 1
-            })
-        );
-
-        assert_eq!(
-            token_iter.next(),
-            Some(Token {
-                kind: Whitespace,
-                len: 1
-            })
-        );
-
-        assert_eq!(
-            token_iter.next(),
-            Some(Token {
-                kind: Literal,
-                len: 13
-            })
-        );
-
+        assert_eq!(token_iter.next(), Some(Token { kind: Ident, len: 3 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Ident, len: 4 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Equals, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Literal, len: 13 }));
         assert_eq!(token_iter.next(), Some(Token { kind: Semi, len: 1 }));
 
         assert_eq!(token_iter.next(), None);
