@@ -9,6 +9,7 @@ pub mod env;
 mod utils;
 mod val;
 mod lexer;
+mod parser;
 
 #[derive(Debug)]
 pub struct Parse(Stmt);

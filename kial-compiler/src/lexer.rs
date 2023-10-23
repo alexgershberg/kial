@@ -29,6 +29,7 @@ impl<'a> Cursor<'a> {
     }
 
     fn pos(&self) -> usize {
+        println!("{} : {}", self.len, self.chars.as_str().len());
         self.len - self.chars.as_str().len()
     }
 
@@ -42,29 +43,37 @@ impl<'a> Cursor<'a> {
         c
     }
 
-    fn take_while(&mut self, pred: impl Fn(char) -> bool) {
+    fn take_while(&mut self, pred: impl Fn(char) -> bool) -> String {
+        let mut s = vec![];
         while pred(self.first()) {
-            self.take_1();
+            s.push(self.take_1());
         }
+
+        s.iter().collect()
     }
 
-    fn extract_ident(&mut self) {
+    fn extract_ident(&mut self) -> String {
         self.take_while(|c| c.is_alphanumeric())
     }
 
-    fn extract_num(&mut self) {
+    fn extract_num(&mut self) -> String {
         self.take_while(|c| c.is_numeric())
     }
 
-    fn extract_double_quoted_string(&mut self) {
-        self.take_while(|c| c == '"');
-        self.take_while(|c| c != '"');
-        self.take_while(|c| c == '"');
+    fn extract_double_quoted_string(&mut self) -> String {
+        let mut str = vec![
+            self.take_while(|c| c == '"'),
+            self.take_while(|c| c != '"'),
+            self.take_while(|c| c == '"'),
+        ];
+
+        str.concat()
     }
 
     fn advance_token(&mut self) -> Token {
         let first_char = self.take_1();
 
+        let mut val = None;
         let token_kind = match first_char {
             EOF_CHAR => Eof,
             '(' => OpenParen,
@@ -81,20 +90,22 @@ impl<'a> Cursor<'a> {
             '=' => Equals,
             ';' => Semi,
             '"' => {
-                self.extract_double_quoted_string();
+                let str = format!("{}{}", first_char, self.extract_double_quoted_string());
+                val = Some(str);
                 Literal
             }
 
             c if c.is_ascii_whitespace() => Whitespace,
 
             c @ '0'..='9' => {
-                println!("Num matched: {c}");
-                self.extract_num();
+                let mut num = format!("{}{}", first_char, self.extract_num());
+                val = Some(num);
                 Literal
             }
 
             c if is_valid_id_start(c) => {
-                self.extract_ident();
+                let ident = format!("{}{}", first_char, self.extract_ident());
+                val = Some(ident);
                 Ident
             }
 
@@ -103,6 +114,7 @@ impl<'a> Cursor<'a> {
 
         let token = Token {
             kind: token_kind,
+            val,
             len: self.pos(),
         };
 
@@ -113,13 +125,19 @@ impl<'a> Cursor<'a> {
 }
 
 #[derive(Debug, PartialEq)]
-struct Token {
-    kind: TokenKind,
+struct Val {
+    val: String,
+}
+
+#[derive(Debug, PartialEq)]
+pub(crate) struct Token {
+    pub(crate) kind: TokenKind,
+    pub(crate) val: Option<String>,
     len: usize,
 }
 
 #[derive(Debug, PartialEq)]
-enum TokenKind {
+pub(crate) enum TokenKind {
     Ident,        // function & variable names
     Literal,      // Numbers, string literals
     OpenParen,    // (
@@ -140,7 +158,7 @@ enum TokenKind {
     Unknown,
 }
 
-fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
+pub(crate) fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
     let mut cursor = Cursor::new(input);
 
     std::iter::from_fn(move || {
@@ -157,21 +175,21 @@ fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
 #[cfg(test)]
 mod tests {
     use crate::lexer::TokenKind::*;
-    use crate::lexer::{tokenize, Token};
+    use crate::lexer::{tokenize, Token, Val};
 
     #[test]
     fn tokenize_simple_func() {
         let text = "func main() {}";
         let mut token_iter = tokenize(text);
 
-        assert_eq!(token_iter.next(), Some(Token { kind: Ident, len: 4 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, len: 1 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Ident, len: 4 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: OpenParen, len: 1 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: CloseParen, len: 1 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, len: 1 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: OpenBrace, len: 1 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: CloseBrace, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Ident, val: Some("func".to_string()), len: 4 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, val: None, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Ident, val: Some("main".to_string()), len: 4 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: OpenParen, val: None, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: CloseParen, val: None, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, val: None, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: OpenBrace, val: None, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: CloseBrace, val: None, len: 1 }));
         assert_eq!(token_iter.next(), None);
     }
 
@@ -182,47 +200,47 @@ mod tests {
         let mut token_iter = tokenize(text);
 
         // func main() {\n
-        assert_eq!(token_iter.next(), Some(Token { kind: Ident, len: 4 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, len: 1 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Ident, len: 4 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: OpenParen, len: 1 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: CloseParen, len: 1 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, len: 1 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: OpenBrace, len: 1 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Ident, val: Some("func".to_string()), len: 4 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, val: None, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Ident, val: Some("main".to_string()), len: 4 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: OpenParen, val: None, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: CloseParen, val: None, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, val: None, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: OpenBrace, val: None, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, val: None, len: 1 }));
 
         // let word1 = "hello";\n
-        assert_eq!(token_iter.next(), Some(Token { kind: Ident, len: 3 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, len: 1 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Ident, len: 5 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, len: 1 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Equals, len: 1 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, len: 1 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Literal, len: 7 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Semi, len: 1 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Ident, val: Some("let".to_string()), len: 3 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, val: None, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Ident, val: Some("word1".to_string()), len: 5 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, val: None, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Equals, val: None, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, val: None, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Literal, val: Some(r#""hello""#.to_string()), len: 7 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Semi, val: None, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, val: None, len: 1 }));
 
         // let word2 = " world!";\n
-        assert_eq!(token_iter.next(), Some(Token { kind: Ident, len: 3 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, len: 1 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Ident, len: 5}));
-        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, len: 1 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Equals, len: 1 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, len: 1 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Literal, len: 9 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Semi, len: 1 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Ident, val: Some("let".to_string()), len: 3 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, val: None, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Ident, val: Some("word2".to_string()), len: 5}));
+        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, val: None, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Equals, val: None, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, val: None, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Literal, val: Some(r#"" world!""#.to_string()), len: 9 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Semi, val: None, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, val: None, len: 1 }));
 
         // word1 + word2\n
-        assert_eq!(token_iter.next(), Some(Token { kind: Ident, len: 5 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, len: 1 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Plus, len: 1 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, len: 1 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Ident, len: 5 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Ident, val: Some("word1".to_string()), len: 5 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, val: None, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Plus, val: None, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, val: None, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Ident, val: Some("word2".to_string()), len: 5 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, val: None, len: 1 }));
 
         // }
-        assert_eq!(token_iter.next(), Some(Token { kind: CloseBrace, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: CloseBrace, val: None, len: 1 }));
         assert_eq!(token_iter.next(), None);
     }
 
@@ -231,8 +249,8 @@ mod tests {
         let s = "987654321 ";
         let mut token_iter = tokenize(s);
 
-        assert_eq!(token_iter.next(), Some(Token { kind: Literal, len: 9 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Literal, val: Some("987654321".to_string() ), len: 9 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, val: None, len: 1 }));
         assert_eq!(token_iter.next(), None);
     }
 
@@ -241,14 +259,14 @@ mod tests {
         let s = r#"let text = "hello world";"#;
         let mut token_iter = tokenize(s);
 
-        assert_eq!(token_iter.next(), Some(Token { kind: Ident, len: 3 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, len: 1 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Ident, len: 4 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, len: 1 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Equals, len: 1 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, len: 1 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Literal, len: 13 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Semi, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Ident, val: Some("let".to_string()), len: 3 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, val: None, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Ident, val: Some("text".to_string()), len: 4 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, val: None, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Equals, val: None, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Whitespace, val: None, len: 1 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Literal, val: Some(r#""hello world""#.to_string()), len: 13 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: Semi, val: None, len: 1 }));
 
         assert_eq!(token_iter.next(), None);
     }
