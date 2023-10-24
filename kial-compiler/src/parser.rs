@@ -1,46 +1,74 @@
-use crate::lexer;
-use crate::lexer::{Token, TokenKind};
+use crate::lexer::{tokenize, Token, TokenKind};
 
-struct TokenStream<'a> {
-    tokens: Box<dyn Iterator<Item = Token> + 'a>,
+struct TokenStream {
+    tokens: Vec<Token>,
 }
 
-impl<'a> TokenStream<'a> {
-    fn expect(&mut self, token_kind: TokenKind) -> bool {
-        let mut p = self.peekable();
-        if let Some(token) = p.peek() {
-            token.kind == token_kind
-        } else {
-            false
+impl TokenStream {
+    fn starts_with_let(&self) -> bool {
+        let is_let = |index: usize, token: &Token| -> bool {
+            let first_is_let = TokenStream::nth_token_is(0, index, token, TokenKind::Let);
+            first_is_let
+        };
+
+        self.n_tokens_are(1, is_let)
+    }
+
+    fn is_decl(&self) -> bool {
+        let is_ident = |index: usize, token: &Token| -> bool {
+            let first_is_let = TokenStream::nth_token_is(0, index, token, TokenKind::Let);
+            let second_is_ident = TokenStream::nth_token_is(1, index, token, TokenKind::Ident);
+            let third_is_semi = TokenStream::nth_token_is(2, index, token, TokenKind::Semi);
+
+            first_is_let || second_is_ident || third_is_semi
+        };
+
+        self.n_tokens_are(2, is_ident)
+    }
+
+    fn is_init(&self) -> bool {
+        let is_init = |index: usize, token: &Token| -> bool {
+            let first_is_let = TokenStream::nth_token_is(0, index, token, TokenKind::Let);
+            let second_is_ident = TokenStream::nth_token_is(1, index, token, TokenKind::Ident);
+            let third_is_equals = TokenStream::nth_token_is(2, index, token, TokenKind::Equals);
+
+            first_is_let || second_is_ident || third_is_equals
+        };
+
+        self.n_tokens_are(3, is_init)
+    }
+
+    fn n_tokens_are(&self, n: usize, pred: fn(usize, &Token) -> bool) -> bool {
+        for (index, token) in self.tokens.iter().enumerate() {
+            if index > (n - 1) {
+                return true;
+            }
+
+            if !pred(index, token) {
+                return false;
+            }
         }
+        true
+    }
+
+    fn nth_token_is(n: usize, index: usize, token: &Token, expected: TokenKind) -> bool {
+        index == n && token.kind == expected
     }
 }
 
-impl<'a> Iterator for TokenStream<'a> {
-    type Item = Token;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.tokens.next()
-    }
-}
-
-impl<'a> From<&'a str> for TokenStream<'a> {
-    fn from(value: &'a str) -> Self {
+impl From<&str> for TokenStream {
+    fn from(s: &str) -> Self {
         Self {
-            tokens: Box::new(lexer::tokenize(value)),
+            tokens: tokenize(s).collect(),
         }
     }
 }
 
 #[derive(Debug, PartialEq)]
-struct Ident(String);
+pub struct Ident(pub String);
 
 impl Ident {
     fn parse(ts: &mut TokenStream) -> Result<Self, String> {
-        if let Some(token) = ts.next() {
-            return Ok(Self(token.val.unwrap()));
-        }
-
         Err("Expected Identifier, got... something else. TODO: better msg?".to_string())
     }
 }
@@ -110,74 +138,41 @@ impl Mod {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::{Expr, Ident, TokenStream};
+    use crate::parser::TokenStream;
 
     #[test]
-    fn parse_binary_expr() {
-        let mut ts = TokenStream::from("HelloWorld");
-        // Expr::parse(&mut ts);
-        assert_eq!(Ident::parse(&mut ts), Ok(Ident("HelloWorld".to_string())))
+    fn check_is_init() {
+        let ts = TokenStream::from("let i = 10 + 20 + 30;");
+        assert!(ts.is_init());
+    }
+
+    #[test]
+    fn check_is_not_init() {
+        let ts = TokenStream::from("let i;");
+        assert!(!ts.is_init());
+    }
+
+    #[test]
+    fn check_starts_with_let() {
+        let ts = TokenStream::from("let a");
+        assert!(ts.starts_with_let());
+    }
+
+    #[test]
+    fn check_doesnt_start_with_let() {
+        let ts = TokenStream::from("hello");
+        assert!(!ts.starts_with_let());
+    }
+
+    #[test]
+    fn check_is_decl() {
+        let ts = TokenStream::from("let a;");
+        assert!(ts.is_decl());
+    }
+
+    #[test]
+    fn check_is_not_decl() {
+        let ts = TokenStream::from("a");
+        assert!(!ts.is_decl());
     }
 }
-
-/*
-
-Roman num -> D
-
-A -> ( 0 | 4 | 5 + ( 1 | 2 | 3 | 0 ) ) | 9 // Max 9
-B -> ( 0 A | 10 A | 20 A | 30 A | 40 A | 50 A | 60 A | 70 A | 80 A | 90 A ) // 99
-C -> ( 100 B | 200 B | 300 B | 400 B | 500 B | 600 B | 700 B | 800 B | 900 B ) // 999
-D -> ( 1000 C | 2000 C | 3000 C | 4000 C) // 4999
-
-
-units = I | II | III | Empty // 0, 1, 2, 3
-
-         0      4      9
-q -> ( Empty | IV | V units ) // 0..=9
-
-tens = X | XX | XXX | Empty // 0, 10, 20, 30
-
-         39      49       89       99
-w -> ( tens q | LX q | L tens q | XC q ) // 0..99
-          100  200  300
-hundreds = C | CC | CCC | Empty // 0, 100, 200, 300
-
-         399        499       899         999
-e = ( hundreds w | CD w | D hundreds w |       )
-r
-
-
-
-I 1
-II 2
-III 3
-IV 4
-V 5
-VI 6
-VII 7
-VIII 8
-IX 9
-X 10
-XXX
-XL 40
-L 50
-LX 60
-LXX 70
-LXXX 80
-
-XC 90
-C 100
-CX 110
-
-CD 400
-D 500
-DC 600
-DCC 700
-DCCC 800
-M 1000
-
-
-
-
-
-*/

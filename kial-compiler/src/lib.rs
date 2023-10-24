@@ -6,10 +6,10 @@ pub mod expr;
 pub mod stmt;
 
 pub mod env;
+pub mod lexer;
+pub mod parser;
 mod utils;
 mod val;
-mod lexer;
-mod parser;
 
 #[derive(Debug)]
 pub struct Parse(Stmt);
