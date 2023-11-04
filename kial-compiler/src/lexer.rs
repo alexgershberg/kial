@@ -150,6 +150,22 @@ pub struct Token {
     pub len: usize,
 }
 
+impl Token {
+    fn new(kind: TokenKind, val: String, len: usize) -> Self {
+        Self { kind, val, len }
+    }
+}
+
+impl Default for Token {
+    fn default() -> Self {
+        Self {
+            kind: Eof,
+            val: String::new(),
+            len: 0,
+        }
+    }
+}
+
 impl Display for Token {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let repr = match self.kind {
@@ -215,11 +231,28 @@ pub fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
     })
 }
 
+fn expr_to_postfix_notation<'a>(
+    iter: impl Iterator<Item = Token>,
+) -> impl Iterator<Item = Token> + 'a {
+    std::iter::from_fn(move || Some(Token::default()))
+}
+
 #[rustfmt::skip::macros(assert_eq)]
 #[cfg(test)]
 mod tests {
     use crate::lexer::TokenKind::*;
-    use crate::lexer::{tokenize, Token, Val};
+    use crate::lexer::{expr_to_postfix_notation, tokenize, Token};
+
+    #[test]
+    fn simple_expr_to_postfix_notations() {
+        let s = "10 + 20 * 5 - 15 / 3 * 6 + 4";
+        // 10 20 5 * + 4 15 3 6 * / + -
+        // 952+-3*
+        // 6
+
+        let token_iter = tokenize(s);
+        expr_to_postfix_notation(token_iter);
+    }
 
     #[test]
     fn tokenize_simple_func() {
@@ -291,6 +324,34 @@ mod tests {
         assert_eq!(token_iter.next(), Some(Token { kind: Equals, val: "".to_string(), len: 1 }));
         assert_eq!(token_iter.next(), Some(Token { kind: Literal, val: r#""hello world""#.to_string(), len: 13 }));
         assert_eq!(token_iter.next(), Some(Token { kind: Semi, val: "".to_string(), len: 1 }));
+
+        assert_eq!(token_iter.next(), None);
+    }
+
+    #[test]
+    fn tokenize_expression() {
+        let s = "10 + 20 * 5 - 15 / 3 * 6 + 4";
+        let mut token_iter = tokenize(s);
+
+        assert_eq!(token_iter.next(), Some(Token::new(Literal, "10".to_string(), 2)));
+        assert_eq!(token_iter.next(), Some(Token::new(Plus, "".to_string(), 1)));
+
+        assert_eq!(token_iter.next(), Some(Token::new(Literal, "20".to_string(), 2)));
+        assert_eq!(token_iter.next(), Some(Token::new(Star, "".to_string(), 1)));
+
+        assert_eq!(token_iter.next(), Some(Token::new(Literal, "5".to_string(), 1)));
+        assert_eq!(token_iter.next(), Some(Token::new(Minus, "".to_string(), 1)));
+
+        assert_eq!(token_iter.next(), Some(Token::new(Literal, "15".to_string(), 2)));
+        assert_eq!(token_iter.next(), Some(Token::new(Slash, "".to_string(), 1)));
+
+        assert_eq!(token_iter.next(), Some(Token::new(Literal, "3".to_string(), 1)));
+        assert_eq!(token_iter.next(), Some(Token::new(Star, "".to_string(), 1)));
+
+        assert_eq!(token_iter.next(), Some(Token::new(Literal, "6".to_string(), 1)));
+        assert_eq!(token_iter.next(), Some(Token::new(Plus, "".to_string(), 1)));
+
+        assert_eq!(token_iter.next(), Some(Token::new(Literal, "4".to_string(), 1)));
 
         assert_eq!(token_iter.next(), None);
     }
