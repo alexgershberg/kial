@@ -143,7 +143,7 @@ struct Val {
     val: String,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Token {
     pub kind: TokenKind,
     pub val: String,
@@ -195,7 +195,7 @@ impl Display for Token {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum TokenKind {
     Ident,        // function & variable names
     Literal,      // Numbers, string literals

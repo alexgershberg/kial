@@ -1,11 +1,12 @@
 use crate::lexer::{tokenize, Token, TokenKind};
 
-struct TokenStream {
-    tokens: Vec<Token>,
+struct TokenStream<'a> {
+    tokens: Box<dyn Iterator<Item = Token> + 'a>,
+    buffer: Vec<Token>
 }
 
-impl TokenStream {
-    fn starts_with_let(&self) -> bool {
+impl<'a> TokenStream<'a> {
+    fn starts_with_let(&mut self) -> bool {
         let is_let = |index: usize, token: &Token| -> bool {
             let first_is_let = TokenStream::nth_token_is(0, index, token, TokenKind::Let);
             first_is_let
@@ -14,7 +15,7 @@ impl TokenStream {
         self.n_tokens_are(1, is_let)
     }
 
-    fn is_decl(&self) -> bool {
+    fn is_decl(&mut self) -> bool {
         let is_ident = |index: usize, token: &Token| -> bool {
             let first_is_let = TokenStream::nth_token_is(0, index, token, TokenKind::Let);
             let second_is_ident = TokenStream::nth_token_is(1, index, token, TokenKind::Ident);
@@ -26,7 +27,7 @@ impl TokenStream {
         self.n_tokens_are(2, is_ident)
     }
 
-    fn is_init(&self) -> bool {
+    fn is_init(&mut self) -> bool {
         let is_init = |index: usize, token: &Token| -> bool {
             let first_is_let = TokenStream::nth_token_is(0, index, token, TokenKind::Let);
             let second_is_ident = TokenStream::nth_token_is(1, index, token, TokenKind::Ident);
@@ -38,8 +39,14 @@ impl TokenStream {
         self.n_tokens_are(3, is_init)
     }
 
-    fn n_tokens_are(&self, n: usize, pred: fn(usize, &Token) -> bool) -> bool {
-        for (index, token) in self.tokens.iter().enumerate() {
+    fn n_tokens_are(&mut self, n: usize, pred: fn(usize, &Token) -> bool) -> bool {
+        let tokens = self.read(n);
+
+        if tokens.len() < n {
+            return false;
+        }
+
+        for (index, token) in tokens.iter().enumerate() {
             if index > (n - 1) {
                 return true;
             }
@@ -48,18 +55,41 @@ impl TokenStream {
                 return false;
             }
         }
+
         true
     }
 
     fn nth_token_is(n: usize, index: usize, token: &Token, expected: TokenKind) -> bool {
         index == n && token.kind == expected
     }
+
+    fn read(&mut self, n: usize) -> Vec<Token> {
+        if n <= self.buffer.len() {
+            // We have enough elements
+            return self.buffer.clone()
+        }
+
+        let to_take = n - self.buffer.len();
+
+        for i in 0..to_take {
+            if let Some(token) = self.tokens.next() {
+                self.buffer.push(token);
+            }
+            else {
+                // Early return for efficiency
+                break;
+            }
+        }
+
+        self.buffer.clone()
+    }
 }
 
-impl From<&str> for TokenStream {
-    fn from(s: &str) -> Self {
+impl<'a> From<&'a str> for TokenStream<'a> {
+    fn from(s: &'a str) -> Self {
         Self {
-            tokens: tokenize(s).collect(),
+            tokens: Box::new(tokenize(s)),
+            buffer: Vec::new()
         }
     }
 }
@@ -142,37 +172,67 @@ mod tests {
 
     #[test]
     fn check_is_init() {
-        let ts = TokenStream::from("let i = 10 + 20 + 30;");
+        let mut ts = TokenStream::from("let i = 10 + 20 + 30;");
         assert!(ts.is_init());
     }
 
     #[test]
     fn check_is_not_init() {
-        let ts = TokenStream::from("let i;");
+        let mut ts = TokenStream::from("let i;");
         assert!(!ts.is_init());
     }
 
     #[test]
     fn check_starts_with_let() {
-        let ts = TokenStream::from("let a");
+        let mut ts = TokenStream::from("let a");
         assert!(ts.starts_with_let());
+        assert!(!ts.is_init())
     }
 
     #[test]
     fn check_doesnt_start_with_let() {
-        let ts = TokenStream::from("hello");
+        let mut ts = TokenStream::from("hello");
         assert!(!ts.starts_with_let());
+
+        assert!(!ts.is_decl())
     }
 
     #[test]
     fn check_is_decl() {
-        let ts = TokenStream::from("let a;");
+        let mut ts = TokenStream::from("let a;");
         assert!(ts.is_decl());
+
+        assert!(ts.starts_with_let());
+
+        assert!(!ts.is_init());
     }
 
     #[test]
     fn check_is_not_decl() {
-        let ts = TokenStream::from("a");
+        let mut ts = TokenStream::from("a");
         assert!(!ts.is_decl());
+    }
+
+    #[test]
+    fn read_n_from_token_stream() {
+        let mut ts = TokenStream::from("a b c d;");
+
+        let tokens = ts.read(2);
+        assert_eq!(tokens.len(), 2);
+
+        let tokens = ts.read(4);
+        assert_eq!(tokens.len(), 4);
+
+        let tokens = ts.read(2);
+        assert_eq!(tokens.len(), 4);
+
+        let tokens = ts.read(5);
+        assert_eq!(tokens.len(), 5);
+
+        let tokens = ts.read(0);
+        assert_eq!(tokens.len(), 5);
+
+        let tokens = ts.read(100);
+        assert_eq!(tokens.len(), 5);
     }
 }
