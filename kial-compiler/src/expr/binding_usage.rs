@@ -33,7 +33,6 @@ impl BindingUsage {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::val::Val;
 
     #[test]
     fn eval_binding_not_found() {

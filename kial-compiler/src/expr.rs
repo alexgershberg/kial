@@ -165,7 +165,6 @@ impl Expr {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::expr::binding_usage::BindingUsage;
 
     #[test]
     fn expr_parse_gibberish_1() {

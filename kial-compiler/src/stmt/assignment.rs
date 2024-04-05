@@ -1,8 +1,7 @@
 use crate::env::Env;
-use crate::expr::binding_usage::BindingUsage;
 use crate::expr::Expr;
+use crate::utils;
 use crate::val::Val;
-use crate::{utils, val};
 
 #[derive(Debug, PartialEq)]
 pub(crate) struct Assignment {

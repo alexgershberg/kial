@@ -2,7 +2,7 @@ use crate::lexer::{tokenize, Token, TokenKind};
 
 struct TokenStream<'a> {
     tokens: Box<dyn Iterator<Item = Token> + 'a>,
-    buffer: Vec<Token>
+    buffer: Vec<Token>,
 }
 
 impl<'a> TokenStream<'a> {
@@ -66,7 +66,7 @@ impl<'a> TokenStream<'a> {
     fn read(&mut self, n: usize) -> Vec<Token> {
         if n <= self.buffer.len() {
             // We have enough elements
-            return self.buffer.clone()
+            return self.buffer.clone();
         }
 
         let to_take = n - self.buffer.len();
@@ -74,8 +74,7 @@ impl<'a> TokenStream<'a> {
         for i in 0..to_take {
             if let Some(token) = self.tokens.next() {
                 self.buffer.push(token);
-            }
-            else {
+            } else {
                 // Early return for efficiency
                 break;
             }
@@ -89,7 +88,7 @@ impl<'a> From<&'a str> for TokenStream<'a> {
     fn from(s: &'a str) -> Self {
         Self {
             tokens: Box::new(tokenize(s)),
-            buffer: Vec::new()
+            buffer: Vec::new(),
         }
     }
 }

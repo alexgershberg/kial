@@ -1,5 +1,5 @@
-use std::io::Write;
 use kial_compiler::env::Env;
+use std::io::Write;
 
 fn main() {
     let mut env = Env::default();
@@ -16,19 +16,16 @@ fn main() {
             }
 
             match kial_compiler::parse(input) {
-                Ok(parse) => {
-                    match parse.eval(&mut env) {
-                        Ok(val) => println!("{val}"),
-                        Err(e) => {
-                            println!("1: {e}")
-                        }
+                Ok(parse) => match parse.eval(&mut env) {
+                    Ok(val) => println!("{val}"),
+                    Err(e) => {
+                        println!("1: {e}")
                     }
-                }
+                },
                 Err(e) => {
                     println!("2: {e}")
                 }
             }
         }
-
     }
 }
