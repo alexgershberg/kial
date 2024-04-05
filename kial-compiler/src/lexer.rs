@@ -243,69 +243,72 @@ fn expr_to_postfix_notation2<'a>(
     std::iter::from_fn(move || Some(Token::default()))
 }
 
-fn expr_to_postfix_notation<'a>(mut iter: impl Iterator<Item = Token>) -> String {
-    let print_debug = |rpn: &Vec<Token>, stack: &Vec<Token>| {
-        print!("rpn: ");
-        for x in rpn {
-            print!("{x} ");
-        }
-        print!("{:10}", " ");
-
-        print!("stack: ");
-        for x in stack {
-            print!("{x} ");
-        }
-        println!();
-    };
-
-    let precedence = |token: &Token| -> u8 {
-        // TODO: This can probably be a trait
-        match token.kind {
-            OpenParen => 3,
-            CloseParen => 3,
-            Star => 2,
-            Slash => 2,
-            Percent => 2,
-            Plus => 1,
-            Minus => 1,
-            _ => unreachable!(
-                "This TokenKind \"{:?}\" does not have operator precedence.",
-                token.kind
-            ),
-        }
-    };
-
-    let handle_operand = |token: Token, rpn: &mut Vec<Token>, stack: &mut Vec<Token>| {
-        rpn.push(token);
-    };
-
-    let handle_operator = |token: Token, rpn: &mut Vec<Token>, stack: &mut Vec<Token>| {
-        let precedence_of_token = precedence(&token);
-
-        loop {
-            // TODO: Handle Parenthesis: https://www.youtube.com/watch?v=QxHRM0EQHiQ
-            let Some(last) = stack.last() else {
-                stack.push(token);
-                return;
-            };
-
-            let precedence_of_last = precedence(last);
-            if precedence_of_last <= precedence_of_token {
-                stack.push(token);
-                return;
-            }
-
-            if precedence_of_last > precedence_of_token {
-                let last = stack.pop().unwrap();
-                rpn.push(last);
-            }
-        }
-    };
-
+fn expr_to_postfix_notation<'a>(
+    mut iter: impl Iterator<Item = Token> + 'a,
+) -> impl Iterator<Item = Token> + 'a {
     let mut rpn: Vec<Token> = vec![];
     let mut stack: Vec<Token> = vec![];
+    std::iter::from_fn(move || {
+        let print_debug = |rpn: &Vec<Token>, stack: &Vec<Token>| {
+            print!("rpn: ");
+            for x in rpn {
+                print!("{x} ");
+            }
+            print!("{:10}", " ");
 
-    for token in iter {
+            print!("stack: ");
+            for x in stack {
+                print!("{x} ");
+            }
+            println!();
+        };
+
+        let precedence = |token: &Token| -> u8 {
+            // TODO: This can probably be a trait
+            match token.kind {
+                OpenParen => 3,
+                CloseParen => 3,
+                Star => 2,
+                Slash => 2,
+                Percent => 2,
+                Plus => 1,
+                Minus => 1,
+                _ => unreachable!(
+                    "This TokenKind \"{:?}\" does not have operator precedence.",
+                    token.kind
+                ),
+            }
+        };
+
+        let handle_operand = |token: Token, rpn: &mut Vec<Token>, stack: &mut Vec<Token>| {
+            rpn.push(token);
+        };
+
+        let handle_operator = |token: Token, rpn: &mut Vec<Token>, stack: &mut Vec<Token>| {
+            let precedence_of_token = precedence(&token);
+
+            loop {
+                // TODO: Handle Parenthesis: https://www.youtube.com/watch?v=QxHRM0EQHiQ
+                let Some(last) = stack.last() else {
+                    stack.push(token);
+                    return;
+                };
+
+                let precedence_of_last = precedence(last);
+                if precedence_of_last <= precedence_of_token {
+                    stack.push(token);
+                    return;
+                }
+
+                if precedence_of_last > precedence_of_token {
+                    let last = stack.pop().unwrap();
+                    rpn.push(last);
+                }
+            }
+        };
+
+        let token = iter.next()?; // TODO: Bad logic here, see test
+
         print!("{token:2}{:4}| ", " ");
         print_debug(&rpn, &stack);
         match token.kind {
@@ -315,23 +318,25 @@ fn expr_to_postfix_notation<'a>(mut iter: impl Iterator<Item = Token>) -> String
             }
             _ => unreachable!("This shouldn't be called with token: {:?}", token),
         }
-    }
 
-    if !stack.is_empty() {
-        while let Some(top) = stack.pop() {
-            rpn.push(top)
+        if !stack.is_empty() {
+            while let Some(top) = stack.pop() {
+                rpn.push(top)
+            }
         }
-    }
 
-    print_debug(&rpn, &stack);
-    String::new()
+        print_debug(&rpn, &stack);
+
+        let top = rpn.last().cloned();
+        top
+    })
 }
 
 #[rustfmt::skip::macros(assert_eq)]
 #[cfg(test)]
 mod tests {
     use crate::lexer::TokenKind::*;
-    use crate::lexer::{expr_to_postfix_notation, tokenize, Token};
+    use crate::lexer::{expr_to_postfix_notation, tokenize, Token, TokenKind};
 
     #[test]
     fn simple_expr_to_postfix_notations() {
@@ -341,7 +346,12 @@ mod tests {
         // 6
 
         let token_iter = tokenize(s);
-        expr_to_postfix_notation(token_iter);
+        let mut rpn_iter = expr_to_postfix_notation(token_iter);
+        assert_eq!(rpn_iter.next(), Some(Token::new(NumericLiteral,"10".to_string(), 2)));
+        assert_eq!(rpn_iter.next(), Some(Token::new(NumericLiteral,"20".to_string(), 2)));
+        assert_eq!(rpn_iter.next(), Some(Token::new(NumericLiteral,"5".to_string(), 1)));
+        assert_eq!(rpn_iter.next(), Some(Token::new(Star, "*".to_string(), 1)));
+        assert_eq!(rpn_iter.next(), Some(Token::new(NumericLiteral,"10".to_string(), 2)));
     }
 
     #[test]
