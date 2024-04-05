@@ -1,4 +1,8 @@
-use std::fmt::{Debug, Display, Formatter};
+#![allow(unused)]
+
+use std::any::Any;
+use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
 use std::str::Chars;
 
 use self::TokenKind::*;
@@ -100,7 +104,7 @@ impl<'a> Cursor<'a> {
             '"' => {
                 let str = format!("{}{}", first_char, self.extract_double_quoted_string());
                 val = str;
-                Literal
+                StringLiteral
             }
 
             c if c.is_ascii_whitespace() => Whitespace,
@@ -108,7 +112,7 @@ impl<'a> Cursor<'a> {
             c @ '0'..='9' => {
                 let num = format!("{}{}", first_char, self.extract_num());
                 val = num;
-                Literal
+                NumericLiteral
             }
 
             c if is_valid_id_start(c) => {
@@ -167,12 +171,13 @@ impl Default for Token {
 }
 
 impl Display for Token {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         let repr = match self.kind {
             Let => "let".to_string(),
             Func => "func".to_string(),
             Ident => self.val.clone(),
-            Literal => self.val.clone(),
+            StringLiteral => self.val.clone(),
+            NumericLiteral => self.val.clone(),
             OpenParen => "(".to_string(),
             CloseParen => ")".to_string(),
             OpenBrace => "{".to_string(),
@@ -191,28 +196,29 @@ impl Display for Token {
             Unknown => "UNKNOWN".to_string(),
         };
 
-        f.write_str(repr.as_str())
+        repr.fmt(f) // Fixes weird alignment https://stackoverflow.com/a/77937993
     }
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum TokenKind {
-    Ident,        // function & variable names
-    Literal,      // Numbers, string literals
-    OpenParen,    // (
-    CloseParen,   // )
-    OpenBrace,    // {
-    CloseBrace,   // }
-    OpenBracket,  // [
-    CloseBracket, // ]
-    Semi,         // ;
-    Equals,       // =
-    Plus,         // +
-    Minus,        // -
-    Star,         // *
-    Slash,        // /
-    Let,          // let
-    Func,         // func
+    Ident,          // function & variable names
+    StringLiteral,  // String literals
+    NumericLiteral, // Numeric literals
+    OpenParen,      // (
+    CloseParen,     // )
+    OpenBrace,      // {
+    CloseBrace,     // }
+    OpenBracket,    // [
+    CloseBracket,   // ]
+    Semi,           // ;
+    Equals,         // =
+    Plus,           // +
+    Minus,          // -
+    Star,           // *
+    Slash,          // /
+    Let,            // let
+    Func,           // func
     Percent,
     Whitespace,
     Eof,
@@ -231,10 +237,94 @@ pub fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
     })
 }
 
-fn expr_to_postfix_notation<'a>(
+fn expr_to_postfix_notation2<'a>(
     iter: impl Iterator<Item = Token>,
 ) -> impl Iterator<Item = Token> + 'a {
     std::iter::from_fn(move || Some(Token::default()))
+}
+
+fn expr_to_postfix_notation<'a>(mut iter: impl Iterator<Item = Token>) -> String {
+    let print_debug = |rpn: &Vec<Token>, stack: &Vec<Token>| {
+        print!("rpn: ");
+        for x in rpn {
+            print!("{x} ");
+        }
+        print!("{:10}", " ");
+
+        print!("stack: ");
+        for x in stack {
+            print!("{x} ");
+        }
+        println!();
+    };
+
+    let precedence = |token: &Token| -> u8 {
+        // TODO: This can probably be a trait
+        match token.kind {
+            OpenParen => 3,
+            CloseParen => 3,
+            Star => 2,
+            Slash => 2,
+            Percent => 2,
+            Plus => 1,
+            Minus => 1,
+            _ => unreachable!(
+                "This TokenKind \"{:?}\" does not have operator precedence.",
+                token.kind
+            ),
+        }
+    };
+
+    let handle_operand = |token: Token, rpn: &mut Vec<Token>, stack: &mut Vec<Token>| {
+        rpn.push(token);
+    };
+
+    let handle_operator = |token: Token, rpn: &mut Vec<Token>, stack: &mut Vec<Token>| {
+        let precedence_of_token = precedence(&token);
+
+        loop {
+            // TODO: Handle Parenthesis: https://www.youtube.com/watch?v=QxHRM0EQHiQ
+            let Some(last) = stack.last() else {
+                stack.push(token);
+                return;
+            };
+
+            let precedence_of_last = precedence(last);
+            if precedence_of_last <= precedence_of_token {
+                stack.push(token);
+                return;
+            }
+
+            if precedence_of_last > precedence_of_token {
+                let last = stack.pop().unwrap();
+                rpn.push(last);
+            }
+        }
+    };
+
+    let mut rpn: Vec<Token> = vec![];
+    let mut stack: Vec<Token> = vec![];
+
+    for token in iter {
+        print!("{token:2}{:4}| ", " ");
+        print_debug(&rpn, &stack);
+        match token.kind {
+            NumericLiteral => handle_operand(token, &mut rpn, &mut stack),
+            OpenParen | CloseParen | Equals | Plus | Minus | Star | Slash | Percent => {
+                handle_operator(token, &mut rpn, &mut stack)
+            }
+            _ => unreachable!("This shouldn't be called with token: {:?}", token),
+        }
+    }
+
+    if !stack.is_empty() {
+        while let Some(top) = stack.pop() {
+            rpn.push(top)
+        }
+    }
+
+    print_debug(&rpn, &stack);
+    String::new()
 }
 
 #[rustfmt::skip::macros(assert_eq)]
@@ -285,14 +375,14 @@ mod tests {
         assert_eq!(token_iter.next(), Some(Token { kind: Let, val: "let".to_string(), len: 3 }));
         assert_eq!(token_iter.next(), Some(Token { kind: Ident, val: "word1".to_string(), len: 5 }));
         assert_eq!(token_iter.next(), Some(Token { kind: Equals, val: "".to_string(), len: 1 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Literal, val: r#""hello""#.to_string(), len: 7 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: StringLiteral, val: r#""hello""#.to_string(), len: 7 }));
         assert_eq!(token_iter.next(), Some(Token { kind: Semi, val: "".to_string(), len: 1 }));
 
         // let word2 = " world!";\n
         assert_eq!(token_iter.next(), Some(Token { kind: Let, val: "let".to_string(), len: 3 }));
         assert_eq!(token_iter.next(), Some(Token { kind: Ident, val: "word2".to_string(), len: 5}));
         assert_eq!(token_iter.next(), Some(Token { kind: Equals, val: "".to_string(), len: 1 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Literal, val: r#"" world!""#.to_string(), len: 9 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: StringLiteral, val: r#"" world!""#.to_string(), len: 9 }));
         assert_eq!(token_iter.next(), Some(Token { kind: Semi, val: "".to_string(), len: 1 }));
 
         // word1 + word2\n
@@ -310,7 +400,7 @@ mod tests {
         let s = "987654321 ";
         let mut token_iter = tokenize(s);
 
-        assert_eq!(token_iter.next(), Some(Token { kind: Literal, val: "987654321".to_string(), len: 9 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: NumericLiteral, val: "987654321".to_string(), len: 9 }));
         assert_eq!(token_iter.next(), None);
     }
 
@@ -322,7 +412,7 @@ mod tests {
         assert_eq!(token_iter.next(), Some(Token { kind: Let, val: "let".to_string(), len: 3 }));
         assert_eq!(token_iter.next(), Some(Token { kind: Ident, val: "text".to_string(), len: 4 }));
         assert_eq!(token_iter.next(), Some(Token { kind: Equals, val: "".to_string(), len: 1 }));
-        assert_eq!(token_iter.next(), Some(Token { kind: Literal, val: r#""hello world""#.to_string(), len: 13 }));
+        assert_eq!(token_iter.next(), Some(Token { kind: StringLiteral, val: r#""hello world""#.to_string(), len: 13 }));
         assert_eq!(token_iter.next(), Some(Token { kind: Semi, val: "".to_string(), len: 1 }));
 
         assert_eq!(token_iter.next(), None);
@@ -333,25 +423,25 @@ mod tests {
         let s = "10 + 20 * 5 - 15 / 3 * 6 + 4";
         let mut token_iter = tokenize(s);
 
-        assert_eq!(token_iter.next(), Some(Token::new(Literal, "10".to_string(), 2)));
+        assert_eq!(token_iter.next(), Some(Token::new(NumericLiteral, "10".to_string(), 2)));
         assert_eq!(token_iter.next(), Some(Token::new(Plus, "".to_string(), 1)));
 
-        assert_eq!(token_iter.next(), Some(Token::new(Literal, "20".to_string(), 2)));
+        assert_eq!(token_iter.next(), Some(Token::new(NumericLiteral, "20".to_string(), 2)));
         assert_eq!(token_iter.next(), Some(Token::new(Star, "".to_string(), 1)));
 
-        assert_eq!(token_iter.next(), Some(Token::new(Literal, "5".to_string(), 1)));
+        assert_eq!(token_iter.next(), Some(Token::new(NumericLiteral, "5".to_string(), 1)));
         assert_eq!(token_iter.next(), Some(Token::new(Minus, "".to_string(), 1)));
 
-        assert_eq!(token_iter.next(), Some(Token::new(Literal, "15".to_string(), 2)));
+        assert_eq!(token_iter.next(), Some(Token::new(NumericLiteral, "15".to_string(), 2)));
         assert_eq!(token_iter.next(), Some(Token::new(Slash, "".to_string(), 1)));
 
-        assert_eq!(token_iter.next(), Some(Token::new(Literal, "3".to_string(), 1)));
+        assert_eq!(token_iter.next(), Some(Token::new(NumericLiteral, "3".to_string(), 1)));
         assert_eq!(token_iter.next(), Some(Token::new(Star, "".to_string(), 1)));
 
-        assert_eq!(token_iter.next(), Some(Token::new(Literal, "6".to_string(), 1)));
+        assert_eq!(token_iter.next(), Some(Token::new(NumericLiteral, "6".to_string(), 1)));
         assert_eq!(token_iter.next(), Some(Token::new(Plus, "".to_string(), 1)));
 
-        assert_eq!(token_iter.next(), Some(Token::new(Literal, "4".to_string(), 1)));
+        assert_eq!(token_iter.next(), Some(Token::new(NumericLiteral, "4".to_string(), 1)));
 
         assert_eq!(token_iter.next(), None);
     }
