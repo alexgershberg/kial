@@ -336,7 +336,7 @@ mod tests {
     #[test]
     fn simple_expr_to_postfix_notations() {
         let s = "10 + 20 * 5 - 15 / 3 * 6 + 4";
-        // 10 20 5 * + 4 15 3 6 * / + -
+        // 10 20 5 * 15 3 6 * / 4 + - +
         // 952+-3*
         // 6
 
