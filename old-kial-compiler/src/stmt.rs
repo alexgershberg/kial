@@ -53,7 +53,19 @@ mod tests {
     use crate::expr::operation::Operation;
     use crate::expr::{Expr, Number, Op, Str};
     use crate::stmt::binding_def::BindingDef;
+    use crate::stmt::function_def::FunctionDef;
     use crate::stmt::Stmt;
+
+    #[test]
+    fn parse_function() {
+        assert_eq!(
+            Stmt::parse("func main() {}"),
+            Ok((
+                "",
+                Stmt::FunctionDef(FunctionDef::new("main", vec![], Block::new(vec![])))
+            ))
+        );
+    }
 
     // {let a = 20 let b = 10 let c = b + a c}
     #[test]

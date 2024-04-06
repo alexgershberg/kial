@@ -40,8 +40,11 @@ pub(crate) fn extract_ident(s: &str) -> Result<(&str, &str), String> {
         return Err(String::from("Expected: identifier"));
     }
 
-    if s.starts_with("let") {
-        return Err("Error: 'let' is a reserved keyword".to_string());
+    let reserved_keywords = ["let", "func"];
+    for keyword in reserved_keywords {
+        if s.starts_with(keyword) {
+            return Err(format!("Error: '{keyword}' is a reserved keyword"));
+        }
     }
 
     let pred = |_: usize, c: char| -> bool { c.is_ascii_alphanumeric() || c == '_' };
@@ -77,6 +80,19 @@ pub(crate) fn take_while1(
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn extract_ident_expected_errors() {
+        assert_eq!(
+            extract_ident("func"),
+            Err("Error: 'func' is a reserved keyword".to_string())
+        );
+
+        assert_eq!(
+            extract_ident("let"),
+            Err("Error: 'let' is a reserved keyword".to_string())
+        );
+    }
 
     #[test]
     fn remove_tag() {
