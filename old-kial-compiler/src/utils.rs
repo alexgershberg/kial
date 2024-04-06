@@ -37,7 +37,7 @@ pub(crate) fn extract_ident(s: &str) -> Result<(&str, &str), String> {
     let s = s.trim();
 
     if s.starts_with(|c: char| c.is_numeric()) {
-        return Err(String::from("Expected: identifier"));
+        return Err("Error: identifier must not start with a number".to_string());
     }
 
     let reserved_keywords = ["let", "func"];
@@ -117,12 +117,16 @@ mod test {
     fn cannot_extract_ident_starting_with_number() {
         assert_eq!(
             extract_ident("123abc"),
-            Err(String::from("Expected: identifier"))
+            Err(String::from(
+                "Error: identifier must not start with a number"
+            ))
         );
 
         assert_eq!(
             extract_ident("1000"),
-            Err(String::from("Expected: identifier"))
+            Err(String::from(
+                "Error: identifier must not start with a number"
+            ))
         );
     }
 
