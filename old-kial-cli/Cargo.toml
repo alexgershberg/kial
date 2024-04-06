@@ -1,9 +1,9 @@
 [package]
-name = "kial-cli"
+name = "old-kial-cli"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-kial-compiler = {path = "../kial-compiler"}
+old-kial-compiler = { path = "../old-kial-compiler" }

@@ -1,2 +1,2 @@
 [workspace]
-members = ["kial-cli", "kial-compiler"]
+members = ["old-kial-cli", "kial-compiler", "old-kial-compiler"]

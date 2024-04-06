@@ -1,4 +1,4 @@
-use kial_compiler::env::Env;
+use old_kial_compiler::env::Env;
 use std::io::Write;
 
 fn main() {
@@ -15,7 +15,7 @@ fn main() {
                 continue;
             }
 
-            match kial_compiler::parse(input) {
+            match old_kial_compiler::parse(input) {
                 Ok(parse) => match parse.eval(&mut env) {
                     Ok(val) => println!("{val}"),
                     Err(e) => {

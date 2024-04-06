@@ -3,12 +3,16 @@
 version = 3
 
 [[package]]
-name = "kial-cli"
+name = "kial-compiler"
+version = "0.1.0"
+
+[[package]]
+name = "old-kial-cli"
 version = "0.1.0"
 dependencies = [
- "kial-compiler",
+ "old-kial-compiler",
 ]
 
 [[package]]
-name = "kial-compiler"
+name = "old-kial-compiler"
 version = "0.1.0"
