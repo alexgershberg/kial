@@ -1,7 +1,7 @@
 #![allow(unused)]
 
 use std::any::Any;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::fmt::{Display, Formatter};
 use std::str::Chars;
 
@@ -246,24 +246,28 @@ fn expr_to_postfix_notation2<'a>(
 fn expr_to_postfix_notation<'a>(
     mut iter: impl Iterator<Item = Token> + 'a,
 ) -> impl Iterator<Item = Token> + 'a {
-    let mut rpn: Vec<Token> = vec![];
-    let mut stack: Vec<Token> = vec![];
-    std::iter::from_fn(move || {
-        let print_debug = |rpn: &Vec<Token>, stack: &Vec<Token>| {
+    struct RPNCursor<'a> {
+        rpn: VecDeque<Token>,
+        stack: Vec<Token>,
+        iter: Box<dyn Iterator<Item = Token> + 'a>,
+    }
+
+    impl RPNCursor<'_> {
+        fn print_debug(&self) {
             print!("rpn: ");
-            for x in rpn {
+            for x in &self.rpn {
                 print!("{x} ");
             }
             print!("{:10}", " ");
 
             print!("stack: ");
-            for x in stack {
+            for x in &self.stack {
                 print!("{x} ");
             }
             println!();
-        };
+        }
 
-        let precedence = |token: &Token| -> u8 {
+        fn precedence(token: &Token) -> u8 {
             // TODO: This can probably be a trait
             match token.kind {
                 OpenParen => 3,
@@ -278,58 +282,70 @@ fn expr_to_postfix_notation<'a>(
                     token.kind
                 ),
             }
-        };
+        }
 
-        let handle_operand = |token: Token, rpn: &mut Vec<Token>, stack: &mut Vec<Token>| {
-            rpn.push(token);
-        };
+        fn handle_operand(&mut self, token: Token) {
+            self.rpn.push_back(token);
+        }
 
-        let handle_operator = |token: Token, rpn: &mut Vec<Token>, stack: &mut Vec<Token>| {
-            let precedence_of_token = precedence(&token);
+        fn handle_operator(&mut self, token: Token) {
+            let precedence_of_token = Self::precedence(&token);
 
             loop {
                 // TODO: Handle Parenthesis: https://www.youtube.com/watch?v=QxHRM0EQHiQ
-                let Some(last) = stack.last() else {
-                    stack.push(token);
+                let Some(last) = self.stack.last() else {
+                    self.stack.push(token);
                     return;
                 };
 
-                let precedence_of_last = precedence(last);
+                let precedence_of_last = Self::precedence(last);
                 if precedence_of_last <= precedence_of_token {
-                    stack.push(token);
+                    self.stack.push(token);
                     return;
                 }
 
                 if precedence_of_last > precedence_of_token {
-                    let last = stack.pop().unwrap();
-                    rpn.push(last);
+                    let last = self.stack.pop().unwrap();
+                    self.rpn.push_back(last);
                 }
             }
-        };
-
-        let token = iter.next()?; // TODO: Bad logic here, see test
-
-        print!("{token:2}{:4}| ", " ");
-        print_debug(&rpn, &stack);
-        match token.kind {
-            NumericLiteral => handle_operand(token, &mut rpn, &mut stack),
-            OpenParen | CloseParen | Equals | Plus | Minus | Star | Slash | Percent => {
-                handle_operator(token, &mut rpn, &mut stack)
-            }
-            _ => unreachable!("This shouldn't be called with token: {:?}", token),
         }
 
-        if !stack.is_empty() {
-            while let Some(top) = stack.pop() {
-                rpn.push(top)
+        // TODO: This needs to be a trait
+        fn next(&mut self) -> Option<Token> {
+            while let Some(token) = self.iter.next() {
+                print!("{token:2}{:4}| ", " ");
+                self.print_debug();
+                match token.kind {
+                    NumericLiteral => self.handle_operand(token),
+                    OpenParen | CloseParen | Equals | Plus | Minus | Star | Slash | Percent => {
+                        self.handle_operator(token)
+                    }
+                    _ => unreachable!("This shouldn't be called with token: {:?}", token),
+                };
+
+                if !self.rpn.is_empty() {
+                    return self.rpn.pop_front();
+                }
             }
+
+            if !self.stack.is_empty() {
+                while let Some(top) = self.stack.pop() {
+                    self.rpn.push_back(top)
+                }
+            }
+
+            self.rpn.pop_front()
         }
+    }
 
-        print_debug(&rpn, &stack);
+    let mut cursor = RPNCursor {
+        rpn: VecDeque::new(),
+        stack: vec![],
+        iter: Box::new(iter),
+    };
 
-        let top = rpn.last().cloned();
-        top
-    })
+    std::iter::from_fn(move || cursor.next())
 }
 
 #[rustfmt::skip::macros(assert_eq)]
@@ -350,8 +366,17 @@ mod tests {
         assert_eq!(rpn_iter.next(), Some(Token::new(NumericLiteral,"10".to_string(), 2)));
         assert_eq!(rpn_iter.next(), Some(Token::new(NumericLiteral,"20".to_string(), 2)));
         assert_eq!(rpn_iter.next(), Some(Token::new(NumericLiteral,"5".to_string(), 1)));
-        assert_eq!(rpn_iter.next(), Some(Token::new(Star, "*".to_string(), 1)));
-        assert_eq!(rpn_iter.next(), Some(Token::new(NumericLiteral,"10".to_string(), 2)));
+        assert_eq!(rpn_iter.next(), Some(Token::new(Star, "".to_string(), 1)));
+        assert_eq!(rpn_iter.next(), Some(Token::new(NumericLiteral,"15".to_string(), 2)));
+        assert_eq!(rpn_iter.next(), Some(Token::new(NumericLiteral,"3".to_string(), 1)));
+        assert_eq!(rpn_iter.next(), Some(Token::new(NumericLiteral,"6".to_string(), 1)));
+        assert_eq!(rpn_iter.next(), Some(Token::new(Star, "".to_string(), 1)));
+        assert_eq!(rpn_iter.next(), Some(Token::new(Slash, "".to_string(), 1)));
+        assert_eq!(rpn_iter.next(), Some(Token::new(NumericLiteral,"4".to_string(), 1)));
+        assert_eq!(rpn_iter.next(), Some(Token::new(Plus, "".to_string(), 1)));
+        assert_eq!(rpn_iter.next(), Some(Token::new(Minus, "".to_string(), 1)));
+        assert_eq!(rpn_iter.next(), Some(Token::new(Plus, "".to_string(), 1)));
+        assert_eq!(rpn_iter.next(), None);
     }
 
     #[test]
