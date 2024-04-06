@@ -237,12 +237,6 @@ pub fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
     })
 }
 
-fn expr_to_postfix_notation2<'a>(
-    iter: impl Iterator<Item = Token>,
-) -> impl Iterator<Item = Token> + 'a {
-    std::iter::from_fn(move || Some(Token::default()))
-}
-
 fn expr_to_postfix_notation<'a>(
     mut iter: impl Iterator<Item = Token> + 'a,
 ) -> impl Iterator<Item = Token> + 'a {
@@ -355,7 +349,18 @@ mod tests {
     use crate::lexer::{expr_to_postfix_notation, tokenize, Token, TokenKind};
 
     #[test]
-    fn simple_expr_to_postfix_notations() {
+    #[ignore]
+    fn invalid_expr_to_postfix_notation() {
+        let text =
+            "func main() {\nlet word1 = \"hello\";\nlet word2 = \" world!\";\nword1 + word2\n}";
+        let mut token_iter = tokenize(text);
+        let rpn_iter = expr_to_postfix_notation(token_iter);
+        let v = rpn_iter.collect::<Vec<Token>>();
+        println!("{v:?}");
+    }
+
+    #[test]
+    fn simple_expr_to_postfix_notation() {
         let s = "10 + 20 * 5 - 15 / 3 * 6 + 4";
         // 10 20 5 * 15 3 6 * / 4 + - +
         // 952+-3*
