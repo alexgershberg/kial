@@ -160,6 +160,16 @@ impl Token {
     }
 }
 
+impl TryFrom<&str> for Token {
+    type Error = String;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        tokenize(value)
+            .next()
+            .ok_or(format!("Unable to tokenize: {value}"))
+    }
+}
+
 impl Default for Token {
     fn default() -> Self {
         Self {
@@ -219,9 +229,9 @@ pub enum TokenKind {
     Slash,          // /
     Let,            // let
     Func,           // func
-    Percent,
-    Whitespace,
-    Eof,
+    Percent,        // %
+    Whitespace,     //
+    Eof,            // \0
     Unknown,
 }
 
