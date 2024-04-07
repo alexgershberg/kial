@@ -3,8 +3,9 @@ use crate::ast::block::Block;
 use crate::ast::function::Fn;
 use crate::ast::identifier::Ident;
 use crate::ast::literal::LitKind;
-use crate::tokenstream::TokenStream;
+use crate::ast::pear::Pear;
 
+#[derive(Debug, PartialEq)]
 pub(crate) enum Expr {
     Binary(BinOp, Box<Expr>, Box<Expr>),
     Block(Box<Block>),
@@ -12,8 +13,10 @@ pub(crate) enum Expr {
     FnCall(Fn, Vec<Ident>),
 }
 
-impl Expr {
-    fn parse(ts: &mut TokenStream) -> Self {
+impl TryFrom<&mut Pear<'_>> for Expr {
+    type Error = String;
+
+    fn try_from(value: &mut Pear) -> Result<Self, Self::Error> {
         todo!()
     }
 }

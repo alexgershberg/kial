@@ -1,10 +1,13 @@
-use crate::tokenstream::TokenStream;
+use crate::ast::pear::Pear;
 
 #[derive(Debug, PartialEq)]
 pub(crate) struct Ident(pub String);
 
-impl Ident {
-    fn parse(ts: &mut TokenStream) -> Result<Self, String> {
-        Err("Expected Identifier, got... something else. TODO: better msg?".to_string())
+impl TryFrom<&mut Pear<'_>> for Ident {
+    type Error = String;
+
+    fn try_from(pear: &mut Pear) -> Result<Self, Self::Error> {
+        let identifier = pear.extract_identifier()?.val;
+        Ok(Self(identifier))
     }
 }

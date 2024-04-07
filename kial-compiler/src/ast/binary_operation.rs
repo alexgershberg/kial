@@ -1,5 +1,6 @@
 use crate::tokenstream::TokenStream;
 
+#[derive(Debug, PartialEq)]
 pub(crate) enum BinOp {
     Add,
     Sub,
