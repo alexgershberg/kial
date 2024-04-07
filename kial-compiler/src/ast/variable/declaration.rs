@@ -4,7 +4,7 @@ use crate::pear::Pear;
 
 #[derive(Debug, PartialEq)]
 pub(crate) struct Declaration {
-    name: Ident,
+    pub(crate) name: Ident,
 }
 
 impl TryFrom<&mut Pear<'_>> for Declaration {
@@ -26,7 +26,7 @@ mod tests {
 
     #[test]
     fn parse_declaration() {
-        let mut pear = Pear::from("let a;");
+        let mut pear = Pear::from("let a");
         let local = Declaration::try_from(&mut pear).unwrap();
         assert_eq!(
             local,

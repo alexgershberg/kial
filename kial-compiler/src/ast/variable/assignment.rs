@@ -5,8 +5,8 @@ use crate::pear::Pear;
 
 #[derive(Debug, PartialEq)]
 pub(crate) struct Assignment {
-    name: Ident,
-    value: Expr,
+    pub(crate) name: Ident,
+    pub(crate) value: Expr,
 }
 
 impl TryFrom<&mut Pear<'_>> for Assignment {
@@ -30,7 +30,7 @@ mod test {
 
     #[test]
     fn parse_assignment() {
-        let mut pear = Pear::from("c = 30;");
+        let mut pear = Pear::from("c = 30");
         let local = Assignment::try_from(&mut pear).unwrap();
         assert_eq!(
             local,
