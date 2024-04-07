@@ -1,4 +1,4 @@
-use crate::ast::pear::Pear;
+use crate::pear::Pear;
 
 #[derive(Debug, PartialEq)]
 pub(crate) struct Ident(pub String);

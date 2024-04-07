@@ -1,6 +1,5 @@
 use crate::lexer::{Token, TokenKind};
 use crate::tokenstream::TokenStream;
-use std::ptr::write;
 
 pub(crate) struct Pear<'a> {
     ts: TokenStream<'a>,
@@ -25,14 +24,13 @@ impl Pear<'_> {
         self.take_1(|token| token.kind == TokenKind::Ident)
     }
 
-    pub(crate) fn tag(&mut self, token_kind: TokenKind) -> Result<(), String> {
+    pub(crate) fn tag(&mut self, token_kind: TokenKind) -> Result<Token, String> {
         let Some(actual) = self.peek_next() else {
             return Err(format!("Expected \"{token_kind:?}\" but got \"None\""));
         };
 
         if actual.kind == token_kind {
-            self.consume_1();
-            Ok(())
+            Ok(self.consume_1().unwrap()) // Safe, as we checked peek_next() above
         } else {
             Err(format!(
                 "Expected \"{token_kind:?}\" but got \"{:?}\"",
@@ -47,14 +45,14 @@ impl Pear<'_> {
         };
 
         if pred(&token) {
-            Ok(self.ts.next().unwrap()) // Shouldn't panic as we checked next in peek_next());
+            Ok(self.consume_1().unwrap()) // Shouldn't panic as we checked next in peek_next());
         } else {
             Err(format!("Unexpected token: \"{}\"", token))
         }
     }
 
-    fn consume_1(&mut self) {
-        self.ts.next();
+    fn consume_1(&mut self) -> Option<Token> {
+        self.ts.next()
     }
 
     pub(crate) fn peek_next(&mut self) -> Option<Token> {

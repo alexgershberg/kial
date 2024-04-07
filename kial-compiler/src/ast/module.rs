@@ -1,9 +1,10 @@
-use crate::ast::function::Fn;
+use crate::ast::function::{FunctionDefinition, FunctionInvocation};
 use crate::tokenstream::TokenStream;
 
+// TODO: WIP
 pub(crate) struct Module {
-    entry: Option<Fn>,
-    functions: Vec<Fn>,
+    entry: Option<FunctionDefinition>,
+    functions: Vec<FunctionInvocation>,
 }
 
 impl Module {
