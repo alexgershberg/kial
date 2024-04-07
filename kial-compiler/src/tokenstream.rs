@@ -63,7 +63,7 @@ impl<'a> TokenStream<'a> {
         index == n && token.kind == expected
     }
 
-    fn take(&mut self, n: usize) {
+    fn advance(&mut self, n: usize) {
         if n <= self.buffer.len() {
             return;
         }
@@ -81,12 +81,12 @@ impl<'a> TokenStream<'a> {
     }
 
     pub(crate) fn read(&mut self, n: usize) -> Vec<Token> {
-        self.take(n);
+        self.advance(n);
 
         self.buffer.clone()
     }
 
-    fn peek_next(&mut self) -> Option<Token> {
+    pub(crate) fn peek_next(&mut self) -> Option<Token> {
         self.read(1).pop()
     }
 }
@@ -95,7 +95,7 @@ impl Iterator for TokenStream<'_> {
     type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.take(1);
+        self.advance(1);
         self.buffer.pop()
     }
 }
@@ -112,7 +112,84 @@ impl<'a> From<&'a str> for TokenStream<'a> {
 #[cfg(test)]
 mod tests {
     use crate::lexer::Token;
+    use crate::lexer::TokenKind;
     use crate::tokenstream::TokenStream;
+
+    #[test]
+    fn iterator_test() {
+        let mut ts = TokenStream::from("let i = 10 + 20 + 30;");
+        assert_eq!(
+            ts.next(),
+            Some(Token {
+                kind: TokenKind::Let,
+                val: "let".to_string(),
+                len: 3
+            })
+        );
+
+        assert_eq!(
+            ts.next(),
+            Some(Token {
+                kind: TokenKind::Ident,
+                val: "i".to_string(),
+                len: 1
+            })
+        );
+
+        assert_eq!(
+            ts.next(),
+            Some(Token {
+                kind: TokenKind::Equals,
+                val: "".to_string(),
+                len: 1
+            })
+        );
+
+        assert_eq!(
+            ts.next(),
+            Some(Token {
+                kind: TokenKind::NumericLiteral,
+                val: "10".to_string(),
+                len: 2
+            })
+        );
+
+        assert_eq!(
+            ts.next(),
+            Some(Token {
+                kind: TokenKind::Plus,
+                val: "".to_string(),
+                len: 1
+            })
+        );
+
+        assert_eq!(
+            ts.next(),
+            Some(Token {
+                kind: TokenKind::NumericLiteral,
+                val: "20".to_string(),
+                len: 2
+            })
+        );
+
+        assert_eq!(
+            ts.next(),
+            Some(Token {
+                kind: TokenKind::Plus,
+                val: "".to_string(),
+                len: 1
+            })
+        );
+
+        assert_eq!(
+            ts.next(),
+            Some(Token {
+                kind: TokenKind::NumericLiteral,
+                val: "30".to_string(),
+                len: 2
+            })
+        );
+    }
 
     #[ignore] // TODO: Just for debugging
     #[test]
