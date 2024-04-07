@@ -109,82 +109,10 @@ impl<'a> From<&'a str> for TokenStream<'a> {
     }
 }
 
-#[derive(Debug, PartialEq)]
-pub struct Ident(pub String);
-
-impl Ident {
-    fn parse(ts: &mut TokenStream) -> Result<Self, String> {
-        Err("Expected Identifier, got... something else. TODO: better msg?".to_string())
-    }
-}
-
-enum BinOp {
-    Add,
-    Sub,
-    Mul,
-    Div,
-}
-
-impl BinOp {
-    fn parse(ts: TokenStream) -> Result<Self, String> {
-        todo!()
-    }
-}
-
-struct Block {
-    stmts: Vec<Stmt>,
-}
-
-enum Local {
-    Decl { ident: Ident },
-    Init { ident: Ident, val: Box<Expr> },
-}
-
-enum Stmt {
-    Local(Box<Local>),
-    Expr(Box<Expr>),
-    Semi(Box<Expr>),
-    Empty,
-}
-
-struct Fn {
-    ident: Ident,
-    block: Block,
-}
-
-enum LitKind {
-    String,
-    Number,
-}
-
-enum Expr {
-    Binary(BinOp, Box<Expr>, Box<Expr>),
-    Block(Box<Block>),
-    Lit(LitKind),
-    FnCall(Fn, Vec<Ident>),
-}
-
-impl Expr {
-    fn parse(ts: &mut TokenStream) -> Self {
-        todo!()
-    }
-}
-
-struct Mod {
-    entry: Option<Fn>,
-    functions: Vec<Fn>,
-}
-
-impl Mod {
-    fn parse(ts: TokenStream) -> Self {
-        todo!()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::lexer::Token;
-    use crate::parser::TokenStream;
+    use crate::tokenstream::TokenStream;
 
     #[ignore] // TODO: Just for debugging
     #[test]
