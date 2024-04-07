@@ -1,6 +1,6 @@
 use crate::lexer::{tokenize, Token, TokenKind};
 
-struct TokenStream<'a> {
+pub(crate) struct TokenStream<'a> {
     tokens: Box<dyn Iterator<Item = Token> + 'a>,
     buffer: Vec<Token>,
 }
@@ -63,10 +63,9 @@ impl<'a> TokenStream<'a> {
         index == n && token.kind == expected
     }
 
-    fn read(&mut self, n: usize) -> Vec<Token> {
+    fn take(&mut self, n: usize) {
         if n <= self.buffer.len() {
-            // We have enough elements
-            return self.buffer.clone();
+            return;
         }
 
         let to_take = n - self.buffer.len();
@@ -79,8 +78,25 @@ impl<'a> TokenStream<'a> {
                 break;
             }
         }
+    }
+
+    pub(crate) fn read(&mut self, n: usize) -> Vec<Token> {
+        self.take(n);
 
         self.buffer.clone()
+    }
+
+    fn peek_next(&mut self) -> Option<Token> {
+        self.read(1).pop()
+    }
+}
+
+impl Iterator for TokenStream<'_> {
+    type Item = Token;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.take(1);
+        self.buffer.pop()
     }
 }
 
@@ -167,7 +183,17 @@ impl Mod {
 
 #[cfg(test)]
 mod tests {
+    use crate::lexer::Token;
     use crate::parser::TokenStream;
+
+    #[ignore] // TODO: Just for debugging
+    #[test]
+    fn reverse_polish_notation() {
+        let mut ts = TokenStream::from("let a = 10 + 5 - 8;");
+        let tokens = ts.next().unwrap();
+
+        println!("{tokens:?}")
+    }
 
     #[test]
     fn check_is_init() {
@@ -218,20 +244,72 @@ mod tests {
 
         let tokens = ts.read(2);
         assert_eq!(tokens.len(), 2);
+        assert_eq!(
+            tokens,
+            vec![Token::try_from("a").unwrap(), Token::try_from("b").unwrap()]
+        );
 
         let tokens = ts.read(4);
         assert_eq!(tokens.len(), 4);
+        assert_eq!(
+            tokens,
+            vec![
+                Token::try_from("a").unwrap(),
+                Token::try_from("b").unwrap(),
+                Token::try_from("c").unwrap(),
+                Token::try_from("d").unwrap()
+            ]
+        );
 
         let tokens = ts.read(2);
         assert_eq!(tokens.len(), 4);
+        assert_eq!(
+            tokens,
+            vec![
+                Token::try_from("a").unwrap(),
+                Token::try_from("b").unwrap(),
+                Token::try_from("c").unwrap(),
+                Token::try_from("d").unwrap()
+            ]
+        );
 
         let tokens = ts.read(5);
         assert_eq!(tokens.len(), 5);
+        assert_eq!(
+            tokens,
+            vec![
+                Token::try_from("a").unwrap(),
+                Token::try_from("b").unwrap(),
+                Token::try_from("c").unwrap(),
+                Token::try_from("d").unwrap(),
+                Token::try_from(";").unwrap()
+            ]
+        );
 
         let tokens = ts.read(0);
         assert_eq!(tokens.len(), 5);
+        assert_eq!(
+            tokens,
+            vec![
+                Token::try_from("a").unwrap(),
+                Token::try_from("b").unwrap(),
+                Token::try_from("c").unwrap(),
+                Token::try_from("d").unwrap(),
+                Token::try_from(";").unwrap()
+            ]
+        );
 
         let tokens = ts.read(100);
         assert_eq!(tokens.len(), 5);
+        assert_eq!(
+            tokens,
+            vec![
+                Token::try_from("a").unwrap(),
+                Token::try_from("b").unwrap(),
+                Token::try_from("c").unwrap(),
+                Token::try_from("d").unwrap(),
+                Token::try_from(";").unwrap()
+            ]
+        );
     }
 }
