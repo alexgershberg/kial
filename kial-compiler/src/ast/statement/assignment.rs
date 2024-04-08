@@ -15,7 +15,6 @@ impl TryFrom<&mut Pear<'_>> for Assignment {
         let name = Ident::try_from(&mut *pear)?;
         pear.tag(TokenKind::Equals)?;
         let value = Expr::try_from(&mut *pear)?;
-        pear.tag(TokenKind::Semi)?;
         Ok(Self { name, value })
     }
 }
@@ -25,11 +24,24 @@ mod test {
     use crate::ast::expression::Expr;
     use crate::ast::identifier::Ident;
     use crate::ast::literal::Literal;
-    use crate::ast::variable::assignment::Assignment;
+    use crate::ast::statement::assignment::Assignment;
     use crate::pear::Pear;
 
     #[test]
-    fn parse_assignment() {
+    fn parse_assignment_with_semi() {
+        let mut pear = Pear::from("c = 30;");
+        let local = Assignment::try_from(&mut pear).unwrap();
+        assert_eq!(
+            local,
+            Assignment {
+                name: Ident("c".to_string()),
+                value: Expr::Literal(Literal::Number(30))
+            }
+        );
+    }
+
+    #[test]
+    fn parse_assignment_no_semi() {
         let mut pear = Pear::from("c = 30");
         let local = Assignment::try_from(&mut pear).unwrap();
         assert_eq!(
