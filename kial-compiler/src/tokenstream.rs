@@ -1,8 +1,9 @@
 use crate::lexer::{tokenize, Token, TokenKind};
+use std::collections::VecDeque;
 
 pub(crate) struct TokenStream<'a> {
     tokens: Box<dyn Iterator<Item = Token> + 'a>,
-    buffer: Vec<Token>,
+    buffer: VecDeque<Token>,
 }
 
 impl<'a> TokenStream<'a> {
@@ -72,7 +73,7 @@ impl<'a> TokenStream<'a> {
 
         for i in 0..to_take {
             if let Some(token) = self.tokens.next() {
-                self.buffer.push(token);
+                self.buffer.push_back(token);
             } else {
                 // Early return for efficiency
                 break;
@@ -80,14 +81,18 @@ impl<'a> TokenStream<'a> {
         }
     }
 
-    pub(crate) fn read(&mut self, n: usize) -> Vec<Token> {
+    pub(crate) fn read(&mut self, n: usize) -> VecDeque<Token> {
         self.advance(n);
 
         self.buffer.clone()
     }
 
     pub(crate) fn peek_next(&mut self) -> Option<Token> {
-        self.read(1).pop()
+        self.read(1).pop_front()
+    }
+
+    pub(crate) fn peek_n(&mut self, n: usize) -> Option<Token> {
+        self.read(n).pop_back()
     }
 }
 
@@ -96,7 +101,7 @@ impl Iterator for TokenStream<'_> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.advance(1);
-        self.buffer.pop()
+        self.buffer.pop_front()
     }
 }
 
@@ -104,7 +109,7 @@ impl<'a> From<&'a str> for TokenStream<'a> {
     fn from(s: &'a str) -> Self {
         Self {
             tokens: Box::new(tokenize(s)),
-            buffer: Vec::new(),
+            buffer: VecDeque::new(),
         }
     }
 }
@@ -114,6 +119,46 @@ mod tests {
     use crate::lexer::Token;
     use crate::lexer::TokenKind;
     use crate::tokenstream::TokenStream;
+
+    #[test]
+    fn iterator_complext_test() {
+        let mut ts = TokenStream::from("let i = 10 + 20 + 30;");
+        assert_eq!(
+            ts.peek_next(),
+            Some(Token {
+                kind: TokenKind::Let,
+                val: "let".to_string(),
+                len: 3
+            })
+        );
+
+        assert_eq!(
+            ts.peek_n(2),
+            Some(Token {
+                kind: TokenKind::Ident,
+                val: "i".to_string(),
+                len: 1
+            })
+        );
+
+        assert_eq!(
+            ts.next(),
+            Some(Token {
+                kind: TokenKind::Let,
+                val: "let".to_string(),
+                len: 3
+            })
+        );
+
+        assert_eq!(
+            ts.next(),
+            Some(Token {
+                kind: TokenKind::Ident,
+                val: "i".to_string(),
+                len: 1
+            })
+        );
+    }
 
     #[test]
     fn iterator_test() {

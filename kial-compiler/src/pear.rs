@@ -58,6 +58,10 @@ impl Pear<'_> {
     pub(crate) fn peek_next(&mut self) -> Option<Token> {
         self.ts.peek_next()
     }
+
+    pub(crate) fn peek_n(&mut self, n: usize) -> Option<Token> {
+        self.ts.peek_n(n)
+    }
 }
 
 impl<'a> From<&'a str> for Pear<'a> {
