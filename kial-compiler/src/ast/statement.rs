@@ -1,35 +1,47 @@
 use crate::ast::expression::Expr;
-use crate::ast::variable::assignment::Assignment;
-use crate::ast::variable::declaration::Declaration;
-use crate::ast::variable::initialization::Initialization;
+use crate::ast::statement::assignment::Assignment;
+use crate::lexer::TokenKind;
 use crate::pear::Pear;
+use binding::Binding;
+
+mod assignment;
+pub(crate) mod binding;
 
 #[derive(Debug, PartialEq)]
 pub(crate) enum Stmt {
-    Declaration(Declaration),
     Assignment(Assignment),
-    Initialization(Initialization), // TODO: Could these 3 variable enums be replaced with Variable(Decl, Init, Assign) enum instead?
-    Expr(Box<Expr>),
-    Empty,
+    Binding(Binding),
+    Expr(Expr),
 }
 
 impl TryFrom<&mut Pear<'_>> for Stmt {
     type Error = String;
 
     fn try_from(pear: &mut Pear<'_>) -> Result<Self, Self::Error> {
-        if let Ok(assign) = Assignment::try_from(&mut *pear) {
-            return Ok(Stmt::Assignment(assign));
+        let Some(next) = pear.peek_next() else {
+            return Err("Expected token, found None".to_string());
+        };
+
+        if let Ok(var) = Binding::try_from(&mut *pear) {
+            pear.tag(TokenKind::Semi)?;
+            return Ok(Stmt::Binding(var));
         }
 
-        if let Ok(init) = Initialization::try_from(&mut *pear) {
-            return Ok(Stmt::Initialization(init));
+        let next_next = pear.peek_n(2);
+        let is_assignment = next.kind == TokenKind::Ident
+            && next_next.is_some_and(|token| token.kind == TokenKind::Equals);
+        if is_assignment {
+            if let Ok(assign) = Assignment::try_from(&mut *pear) {
+                pear.tag(TokenKind::Semi)?;
+                return Ok(Stmt::Assignment(assign));
+            }
         }
 
-        if let Ok(decl) = Declaration::try_from(&mut *pear) {
-            return Ok(Stmt::Declaration(decl));
+        if let Ok(expr) = Expr::try_from(&mut *pear) {
+            return Ok(Self::Expr(expr));
         }
 
-        Ok(Stmt::Empty)
+        Err("Malformed statement".to_string())
     }
 }
 
@@ -38,10 +50,9 @@ mod tests {
     use crate::ast::expression::Expr;
     use crate::ast::identifier::Ident;
     use crate::ast::literal::Literal;
+    use crate::ast::statement::assignment::Assignment;
+    use crate::ast::statement::binding::{Binding, BindingUsage, Declaration, Initialization};
     use crate::ast::statement::Stmt;
-    use crate::ast::variable::assignment::Assignment;
-    use crate::ast::variable::declaration::Declaration;
-    use crate::ast::variable::initialization::Initialization;
     use crate::pear::Pear;
 
     #[test]
@@ -51,9 +62,9 @@ mod tests {
 
         assert_eq!(
             stmt,
-            Stmt::Declaration(Declaration {
+            Stmt::Binding(Binding::Declaration(Declaration {
                 name: Ident("a".to_string()),
-            })
+            }))
         );
     }
 
@@ -64,10 +75,10 @@ mod tests {
 
         assert_eq!(
             stmt,
-            Stmt::Initialization(Initialization {
+            Stmt::Binding(Binding::Initialization(Initialization {
                 name: Ident("b".to_string()),
                 value: Expr::Literal(Literal::Number(25)),
-            })
+            }))
         );
     }
 
@@ -83,5 +94,17 @@ mod tests {
                 value: Expr::Literal(Literal::String("\"Anything else\"".to_string())),
             })
         );
+    }
+
+    #[test]
+    fn statement_binding_usage() {
+        let mut pear = Pear::from("c");
+        let stmt = Stmt::try_from(&mut pear);
+        assert_eq!(
+            stmt,
+            Ok(Stmt::Expr(Expr::BindingUsage(BindingUsage {
+                name: Ident("c".to_string())
+            })))
+        )
     }
 }

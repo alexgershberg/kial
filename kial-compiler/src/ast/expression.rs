@@ -2,14 +2,16 @@ use crate::ast::binary_operation::BinOp;
 use crate::ast::block::Block;
 use crate::ast::function::FunctionInvocation;
 use crate::ast::literal::Literal;
+use crate::ast::statement::binding::BindingUsage;
 use crate::lexer::TokenKind;
 use crate::pear::Pear;
 
 #[derive(Debug, PartialEq)]
 pub(crate) enum Expr {
-    Binary(BinOp, Box<Expr>, Box<Expr>),
-    Block(Box<Block>),
+    Binary(Box<Expr>, Box<Expr>, BinOp),
+    Block(Block),
     Literal(Literal),
+    BindingUsage(BindingUsage),
     Function(FunctionInvocation),
 }
 
@@ -31,10 +33,25 @@ impl TryFrom<&mut Pear<'_>> for Expr {
         }
 
         let is_function = next.kind == TokenKind::Func;
+        if is_function {
+            let func = FunctionInvocation::try_from(&mut *pear)?;
+            return Ok(Self::Function(func));
+        }
 
+        let is_ident = next.kind == TokenKind::Ident;
+        if is_ident {
+            let binding = BindingUsage::try_from(&mut *pear)?;
+            return Ok(Self::BindingUsage(binding));
+        }
+
+        let is_block = next.kind == TokenKind::OpenBrace;
+        if is_block {
+            let block = Block::try_from(&mut *pear)?;
+            return Ok(Self::Block(block));
+        }
         // TODO: Finish other variants
 
-        let func = FunctionInvocation::try_from(&mut *pear)?;
-        return Ok(Self::Function(func));
+        let literal = Literal::try_from(&mut *pear)?;
+        return Ok(Self::Literal(literal));
     }
 }
