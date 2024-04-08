@@ -6,4 +6,3 @@ mod identifier;
 mod literal;
 mod module;
 mod statement;
-mod variable;
