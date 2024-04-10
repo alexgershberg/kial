@@ -251,6 +251,7 @@ fn expr_to_postfix_notation<'a>(
     mut iter: impl Iterator<Item = Token> + 'a,
 ) -> impl Iterator<Item = Token> + 'a {
     struct RPNCursor<'a> {
+        other: VecDeque<Token>, // For all other symbols
         rpn: VecDeque<Token>,
         stack: Vec<Token>,
         iter: Box<dyn Iterator<Item = Token> + 'a>,
@@ -258,21 +259,40 @@ fn expr_to_postfix_notation<'a>(
 
     impl RPNCursor<'_> {
         fn print_debug(&self) {
+            let space_count = 10;
+
+            print!("other: ");
+            let mut used_up = 0;
+            for x in &self.other {
+                print!("{x} ");
+                used_up += 2;
+            }
+
+            for _ in 0..=(space_count - used_up) {
+                print!(" ");
+            }
+
             print!("rpn: ");
+            let mut used_up = 0;
             for x in &self.rpn {
                 print!("{x} ");
+                used_up += 2;
             }
-            print!("{:10}", " ");
+
+            for _ in 0..=(space_count - used_up) {
+                print!(" ");
+            }
 
             print!("stack: ");
+            let mut used_up = 0;
             for x in &self.stack {
                 print!("{x} ");
             }
+
             println!();
         }
 
         fn precedence(token: &Token) -> u8 {
-            // TODO: This can probably be a trait
             match token.kind {
                 OpenParen => 3,
                 CloseParen => 3,
@@ -286,6 +306,14 @@ fn expr_to_postfix_notation<'a>(
                     token.kind
                 ),
             }
+        }
+
+        fn handle_other(&mut self, token: Token) {
+            self.other.push_back(token);
+        }
+
+        fn handle_parenthesis(&mut self, token: Token) {
+            // TODO LATER, NO-OP for now
         }
 
         fn handle_operand(&mut self, token: Token) {
@@ -314,19 +342,25 @@ fn expr_to_postfix_notation<'a>(
                 }
             }
         }
+    }
 
-        // TODO: This needs to be a trait
+    impl Iterator for RPNCursor<'_> {
+        type Item = Token;
+
         fn next(&mut self) -> Option<Token> {
             while let Some(token) = self.iter.next() {
-                print!("{token:2}{:4}| ", " ");
-                self.print_debug();
+                print!("{token:7}{:4}| ", " ");
                 match token.kind {
-                    NumericLiteral => self.handle_operand(token),
-                    OpenParen | CloseParen | Equals | Plus | Minus | Star | Slash | Percent => {
-                        self.handle_operator(token)
+                    NumericLiteral | Ident => self.handle_operand(token),
+                    OpenParen | CloseParen => self.handle_parenthesis(token),
+                    Plus | Minus | Star | Slash | Percent => self.handle_operator(token),
+                    _ => {
+                        self.handle_other(token);
+                        self.print_debug();
+                        break;
                     }
-                    _ => unreachable!("This shouldn't be called with token: {:?}", token),
                 };
+                self.print_debug();
 
                 if !self.rpn.is_empty() {
                     return self.rpn.pop_front();
@@ -339,11 +373,20 @@ fn expr_to_postfix_notation<'a>(
                 }
             }
 
-            self.rpn.pop_front()
+            if !self.rpn.is_empty() {
+                return self.rpn.pop_front();
+            }
+
+            if !self.other.is_empty() {
+                return self.other.pop_front();
+            }
+
+            None
         }
     }
 
     let mut cursor = RPNCursor {
+        other: VecDeque::new(),
         rpn: VecDeque::new(),
         stack: vec![],
         iter: Box::new(iter),
@@ -370,11 +413,63 @@ mod tests {
     }
 
     #[test]
-    fn simple_expr_to_postfix_notation() {
+    fn complex_expr_to_postfix_notation_1() {
+        let expr = "let a = 10 + 5 * 2 - 3;";
+
+        let token_iter = tokenize(expr);
+        let mut rpn_iter = expr_to_postfix_notation(token_iter);
+
+        assert_eq!(rpn_iter.next().unwrap().kind, Let);
+        assert_eq!(rpn_iter.next().unwrap().kind, Ident);
+        assert_eq!(rpn_iter.next().unwrap().kind, Equals);
+        assert_eq!(rpn_iter.next(), Some(Token::new(NumericLiteral, "10".to_string(), 2)));
+        assert_eq!(rpn_iter.next(), Some(Token::new(NumericLiteral, "5".to_string(), 1)));
+        assert_eq!(rpn_iter.next(), Some(Token::new(NumericLiteral, "2".to_string(), 1)));
+        assert_eq!(rpn_iter.next(), Some(Token::new(Star, "".to_string(), 1)));
+        assert_eq!(rpn_iter.next(), Some(Token { kind: NumericLiteral, val: "3".to_string(), len: 1 }));
+        assert_eq!(rpn_iter.next(), Some(Token { kind: Minus, val: "".to_string(), len: 1 }));
+        assert_eq!(rpn_iter.next(), Some(Token { kind: Plus, val: "".to_string(), len: 1, }));
+        assert_eq!(rpn_iter.next(), Some(Token { kind: Semi, val: "".to_string(), len: 1, }));
+    }
+
+    #[test]
+    fn complex_expr_to_postfix_notation_2() {
+        let expr = "let a = hello + world * a - c;";
+
+        let token_iter = tokenize(expr);
+        let mut rpn_iter = expr_to_postfix_notation(token_iter);
+
+        assert_eq!(rpn_iter.next().unwrap().kind, Let);
+        assert_eq!(rpn_iter.next().unwrap().kind, Ident);
+        assert_eq!(rpn_iter.next().unwrap().kind, Equals);
+        assert_eq!(rpn_iter.next(), Some(Token::new(Ident, "hello".to_string(), 5)));
+        assert_eq!(rpn_iter.next(), Some(Token::new(Ident, "world".to_string(), 5)));
+        assert_eq!(rpn_iter.next(), Some(Token::new(Ident, "a".to_string(), 1)));
+        assert_eq!(rpn_iter.next(), Some(Token::new(Star, "".to_string(), 1)));
+        assert_eq!(rpn_iter.next(), Some(Token { kind: Ident, val: "c".to_string(), len: 1 }));
+        assert_eq!(rpn_iter.next(), Some(Token { kind: Minus, val: "".to_string(), len: 1 }));
+        assert_eq!(rpn_iter.next(), Some(Token { kind: Plus, val: "".to_string(), len: 1, }));
+        assert_eq!(rpn_iter.next(), Some(Token { kind: Semi, val: "".to_string(), len: 1, }));
+    }
+
+    #[test]
+    fn simple_expr_to_postfix_notation_1() {
+        let expr = "10 + 5 * 2 - 3";
+        let token_iter = tokenize(expr);
+        let mut rpn_iter = expr_to_postfix_notation(token_iter);
+        println!("{:?}", rpn_iter.next());
+        println!("{:?}", rpn_iter.next());
+        println!("{:?}", rpn_iter.next());
+        println!("{:?}", rpn_iter.next());
+        println!("{:?}", rpn_iter.next());
+        println!("{:?}", rpn_iter.next());
+        println!("{:?}", rpn_iter.next());
+    }
+
+    #[test]
+    fn simple_expr_to_postfix_notation_2() {
         let s = "10 + 20 * 5 - 15 / 3 * 6 + 4";
         // 10 20 5 * 15 3 6 * / 4 + - +
-        // 952+-3*
-        // 6
 
         let token_iter = tokenize(s);
         let mut rpn_iter = expr_to_postfix_notation(token_iter);
