@@ -8,11 +8,11 @@ use crate::pear::Pear;
 
 #[derive(Debug, PartialEq)]
 pub(crate) enum Expr {
-    Binary(Box<Expr>, Box<Expr>, BinOp),
+    Binary(BinOp, Box<Expr>, Box<Expr>),
     Block(Block),
     Literal(Literal),
     BindingUsage(BindingUsage),
-    Function(FunctionInvocation),
+    FunctionInvocation(FunctionInvocation),
 }
 
 impl TryFrom<&mut Pear<'_>> for Expr {
@@ -35,7 +35,7 @@ impl TryFrom<&mut Pear<'_>> for Expr {
         let is_function = next.kind == TokenKind::Func;
         if is_function {
             let func = FunctionInvocation::try_from(&mut *pear)?;
-            return Ok(Self::Function(func));
+            return Ok(Self::FunctionInvocation(func));
         }
 
         let is_ident = next.kind == TokenKind::Ident;
@@ -52,6 +52,6 @@ impl TryFrom<&mut Pear<'_>> for Expr {
         // TODO: Finish other variants
 
         let literal = Literal::try_from(&mut *pear)?;
-        return Ok(Self::Literal(literal));
+        Ok(Self::Literal(literal))
     }
 }

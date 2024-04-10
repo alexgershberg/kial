@@ -2,6 +2,7 @@ use crate::ast::expression::Expr;
 use crate::ast::identifier::Ident;
 use crate::lexer::TokenKind;
 use crate::pear::Pear;
+
 #[derive(Debug, PartialEq)]
 pub(crate) struct Declaration {
     pub(crate) name: Ident,

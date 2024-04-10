@@ -20,6 +20,7 @@ impl Pear<'_> {
         self.take_while(|token| token.kind == TokenKind::Whitespace);
         Ok(())
     }
+
     pub(crate) fn extract_identifier(&mut self) -> Result<Token, String> {
         self.take_1(|token| token.kind == TokenKind::Ident)
     }
