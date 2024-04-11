@@ -275,7 +275,7 @@ pub(crate) struct RPNIterator<'a> {
 
 impl<'a> RPNIterator<'a> {
     // TODO: Couldn't implement FromIterator or From, so resorted to doing this
-    fn from_iter(mut iter: impl Iterator<Item = Token> + 'a) -> Self {
+    pub(crate) fn from_iter(mut iter: impl Iterator<Item = Token> + 'a) -> Self {
         RPNIterator {
             other: VecDeque::new(),
             rpn: VecDeque::new(),

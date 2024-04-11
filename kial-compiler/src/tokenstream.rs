@@ -1,4 +1,4 @@
-use crate::lexer::{Token, TokenIterator, TokenKind};
+use crate::lexer::{RPNIterator, Token, TokenIterator, TokenKind};
 use std::collections::VecDeque;
 
 pub(crate) struct TokenStream<'a> {
@@ -108,7 +108,7 @@ impl Iterator for TokenStream<'_> {
 impl<'a> From<&'a str> for TokenStream<'a> {
     fn from(s: &'a str) -> Self {
         Self {
-            tokens: Box::new(TokenIterator::from(s)),
+            tokens: Box::new(RPNIterator::from_iter(TokenIterator::from(s))),
             buffer: VecDeque::new(),
         }
     }
@@ -160,80 +160,29 @@ mod tests {
         );
     }
 
+    #[rustfmt::skip::macros(assert_eq)]
     #[test]
-    fn iterator_test() {
+    fn reverse_polish_notation_iterator_test() {
         let mut ts = TokenStream::from("let i = 10 + 20 + 30;");
-        assert_eq!(
-            ts.next(),
-            Some(Token {
-                kind: TokenKind::Let,
-                val: "let".to_string(),
-                len: 3
-            })
-        );
+        assert_eq!(ts.next(), Some(Token { kind: TokenKind::Let, val: "let".to_string(), len: 3 }));
 
-        assert_eq!(
-            ts.next(),
-            Some(Token {
-                kind: TokenKind::Ident,
-                val: "i".to_string(),
-                len: 1
-            })
-        );
+        assert_eq!(ts.next(), Some(Token { kind: TokenKind::Ident, val: "i".to_string(), len: 1 }));
 
-        assert_eq!(
-            ts.next(),
-            Some(Token {
-                kind: TokenKind::Equals,
-                val: "".to_string(),
-                len: 1
-            })
-        );
+        assert_eq!(ts.next(), Some(Token { kind: TokenKind::Equals, val: "".to_string(), len: 1 }));
 
-        assert_eq!(
-            ts.next(),
-            Some(Token {
-                kind: TokenKind::NumericLiteral,
-                val: "10".to_string(),
-                len: 2
-            })
-        );
+        assert_eq!(ts.next(), Some(Token { kind: TokenKind::NumericLiteral, val: "10".to_string(), len: 2 }));
 
-        assert_eq!(
-            ts.next(),
-            Some(Token {
-                kind: TokenKind::Plus,
-                val: "".to_string(),
-                len: 1
-            })
-        );
+        assert_eq!(ts.next(), Some(Token { kind: TokenKind::NumericLiteral, val: "20".to_string(), len: 2 }));
 
-        assert_eq!(
-            ts.next(),
-            Some(Token {
-                kind: TokenKind::NumericLiteral,
-                val: "20".to_string(),
-                len: 2
-            })
-        );
+        assert_eq!(ts.next(), Some(Token { kind: TokenKind::NumericLiteral, val: "30".to_string(), len: 2 }));
 
-        assert_eq!(
-            ts.next(),
-            Some(Token {
-                kind: TokenKind::Plus,
-                val: "".to_string(),
-                len: 1
-            })
-        );
+        assert_eq!(ts.next(), Some(Token { kind: TokenKind::Plus, val: "".to_string(), len: 1 }));
 
-        assert_eq!(
-            ts.next(),
-            Some(Token {
-                kind: TokenKind::NumericLiteral,
-                val: "30".to_string(),
-                len: 2
-            })
-        );
+        assert_eq!(ts.next(), Some(Token { kind: TokenKind::Plus, val: "".to_string(), len: 1 }));
+
+        assert_eq!(ts.next(), Some(Token { kind: TokenKind::Semi, val: "".to_string(), len: 1 }));
+
+        assert_eq!(ts.next(), None);
     }
 
     #[ignore] // TODO: Just for debugging
@@ -241,7 +190,7 @@ mod tests {
     fn reverse_polish_notation() {
         let mut ts = TokenStream::from("let a = 10 + 5 - 8;");
         let tokens = ts.next().unwrap();
-
+    
         println!("{tokens:?}")
     }
 
