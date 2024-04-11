@@ -3,6 +3,7 @@
 use std::any::Any;
 use std::collections::{HashMap, VecDeque};
 use std::fmt::{Display, Formatter};
+use std::path::Iter;
 use std::str::Chars;
 
 use self::TokenKind::*;
@@ -164,7 +165,7 @@ impl TryFrom<&str> for Token {
     type Error = String;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        tokenize(value)
+        TokenIterator::from(value)
             .next()
             .ok_or(format!("Unable to tokenize: {value}"))
     }
@@ -235,179 +236,194 @@ pub enum TokenKind {
     Unknown,
 }
 
-pub fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
-    let mut cursor = Cursor::new(input);
-    std::iter::from_fn(move || {
-        let token = cursor.advance_token();
-        if token.kind == Eof {
-            None
-        } else {
-            Some(token)
-        }
-    })
+pub(crate) struct TokenIterator<'a> {
+    inner: Box<dyn Iterator<Item = Token> + 'a>,
 }
 
-fn expr_to_postfix_notation<'a>(
-    mut iter: impl Iterator<Item = Token> + 'a,
-) -> impl Iterator<Item = Token> + 'a {
-    struct RPNCursor<'a> {
-        other: VecDeque<Token>, // For all other symbols
-        rpn: VecDeque<Token>,
-        stack: Vec<Token>,
-        iter: Box<dyn Iterator<Item = Token> + 'a>,
+impl<'a> From<&'a str> for TokenIterator<'a> {
+    fn from(s: &'a str) -> Self {
+        let mut cursor = Cursor::new(s);
+        let iter = std::iter::from_fn(move || {
+            let token = cursor.advance_token();
+            if token.kind == Eof {
+                None
+            } else {
+                Some(token)
+            }
+        });
+
+        Self {
+            inner: Box::new(iter),
+        }
+    }
+}
+
+impl Iterator for TokenIterator<'_> {
+    type Item = Token;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next()
+    }
+}
+
+pub(crate) struct RPNIterator<'a> {
+    other: VecDeque<Token>, // For all other symbols
+    rpn: VecDeque<Token>,
+    stack: Vec<Token>,
+    iter: Box<dyn Iterator<Item = Token> + 'a>,
+}
+
+impl<'a> RPNIterator<'a> {
+    // TODO: Couldn't implement FromIterator or From, so resorted to doing this
+    fn from_iter(mut iter: impl Iterator<Item = Token> + 'a) -> Self {
+        RPNIterator {
+            other: VecDeque::new(),
+            rpn: VecDeque::new(),
+            stack: vec![],
+            iter: Box::new(iter),
+        }
     }
 
-    impl RPNCursor<'_> {
-        fn print_debug(&self) {
-            let space_count = 10;
+    fn print_debug(&self) {
+        let space_count = 10;
 
-            print!("other: ");
-            let mut used_up = 0;
-            for x in &self.other {
-                print!("{x} ");
-                used_up += 2;
-            }
-
-            for _ in 0..=(space_count - used_up) {
-                print!(" ");
-            }
-
-            print!("rpn: ");
-            let mut used_up = 0;
-            for x in &self.rpn {
-                print!("{x} ");
-                used_up += 2;
-            }
-
-            for _ in 0..=(space_count - used_up) {
-                print!(" ");
-            }
-
-            print!("stack: ");
-            let mut used_up = 0;
-            for x in &self.stack {
-                print!("{x} ");
-            }
-
-            println!();
+        print!("other: ");
+        let mut used_up = 0;
+        for x in &self.other {
+            print!("{x} ");
+            used_up += 2;
         }
 
-        fn precedence(token: &Token) -> u8 {
+        for _ in 0..=(space_count - used_up) {
+            print!(" ");
+        }
+
+        print!("rpn: ");
+        let mut used_up = 0;
+        for x in &self.rpn {
+            print!("{x} ");
+            used_up += 2;
+        }
+
+        for _ in 0..=(space_count - used_up) {
+            print!(" ");
+        }
+
+        print!("stack: ");
+        let mut used_up = 0;
+        for x in &self.stack {
+            print!("{x} ");
+        }
+
+        println!();
+    }
+
+    fn precedence(token: &Token) -> u8 {
+        match token.kind {
+            OpenParen => 3,
+            CloseParen => 3,
+            Star => 2,
+            Slash => 2,
+            Percent => 2,
+            Plus => 1,
+            Minus => 1,
+            _ => unreachable!(
+                "This TokenKind \"{:?}\" does not have operator precedence.",
+                token.kind
+            ),
+        }
+    }
+
+    fn handle_other(&mut self, token: Token) {
+        self.other.push_back(token);
+    }
+
+    fn handle_parenthesis(&mut self, token: Token) {
+        // TODO LATER, NO-OP for now
+    }
+
+    fn handle_operand(&mut self, token: Token) {
+        self.rpn.push_back(token);
+    }
+
+    fn handle_operator(&mut self, token: Token) {
+        let precedence_of_token = Self::precedence(&token);
+
+        loop {
+            // TODO: Handle Parenthesis: https://www.youtube.com/watch?v=QxHRM0EQHiQ
+            let Some(last) = self.stack.last() else {
+                self.stack.push(token);
+                return;
+            };
+
+            let precedence_of_last = Self::precedence(last);
+            if precedence_of_last <= precedence_of_token {
+                self.stack.push(token);
+                return;
+            }
+
+            if precedence_of_last > precedence_of_token {
+                let last = self.stack.pop().unwrap();
+                self.rpn.push_back(last);
+            }
+        }
+    }
+}
+
+impl Iterator for RPNIterator<'_> {
+    type Item = Token;
+
+    fn next(&mut self) -> Option<Token> {
+        while let Some(token) = self.iter.next() {
+            print!("{token:7}{:4}| ", " ");
             match token.kind {
-                OpenParen => 3,
-                CloseParen => 3,
-                Star => 2,
-                Slash => 2,
-                Percent => 2,
-                Plus => 1,
-                Minus => 1,
-                _ => unreachable!(
-                    "This TokenKind \"{:?}\" does not have operator precedence.",
-                    token.kind
-                ),
-            }
-        }
-
-        fn handle_other(&mut self, token: Token) {
-            self.other.push_back(token);
-        }
-
-        fn handle_parenthesis(&mut self, token: Token) {
-            // TODO LATER, NO-OP for now
-        }
-
-        fn handle_operand(&mut self, token: Token) {
-            self.rpn.push_back(token);
-        }
-
-        fn handle_operator(&mut self, token: Token) {
-            let precedence_of_token = Self::precedence(&token);
-
-            loop {
-                // TODO: Handle Parenthesis: https://www.youtube.com/watch?v=QxHRM0EQHiQ
-                let Some(last) = self.stack.last() else {
-                    self.stack.push(token);
-                    return;
-                };
-
-                let precedence_of_last = Self::precedence(last);
-                if precedence_of_last <= precedence_of_token {
-                    self.stack.push(token);
-                    return;
+                NumericLiteral | Ident => self.handle_operand(token),
+                OpenParen | CloseParen => self.handle_parenthesis(token),
+                Plus | Minus | Star | Slash | Percent => self.handle_operator(token),
+                _ => {
+                    self.handle_other(token);
+                    self.print_debug();
+                    break;
                 }
-
-                if precedence_of_last > precedence_of_token {
-                    let last = self.stack.pop().unwrap();
-                    self.rpn.push_back(last);
-                }
-            }
-        }
-    }
-
-    impl Iterator for RPNCursor<'_> {
-        type Item = Token;
-
-        fn next(&mut self) -> Option<Token> {
-            while let Some(token) = self.iter.next() {
-                print!("{token:7}{:4}| ", " ");
-                match token.kind {
-                    NumericLiteral | Ident => self.handle_operand(token),
-                    OpenParen | CloseParen => self.handle_parenthesis(token),
-                    Plus | Minus | Star | Slash | Percent => self.handle_operator(token),
-                    _ => {
-                        self.handle_other(token);
-                        self.print_debug();
-                        break;
-                    }
-                };
-                self.print_debug();
-
-                if !self.rpn.is_empty() {
-                    return self.rpn.pop_front();
-                }
-            }
-
-            if !self.stack.is_empty() {
-                while let Some(top) = self.stack.pop() {
-                    self.rpn.push_back(top)
-                }
-            }
+            };
+            self.print_debug();
 
             if !self.rpn.is_empty() {
                 return self.rpn.pop_front();
             }
-
-            if !self.other.is_empty() {
-                return self.other.pop_front();
-            }
-
-            None
         }
+
+        if !self.stack.is_empty() {
+            while let Some(top) = self.stack.pop() {
+                self.rpn.push_back(top)
+            }
+        }
+
+        if !self.rpn.is_empty() {
+            return self.rpn.pop_front();
+        }
+
+        if !self.other.is_empty() {
+            return self.other.pop_front();
+        }
+
+        None
     }
-
-    let mut cursor = RPNCursor {
-        other: VecDeque::new(),
-        rpn: VecDeque::new(),
-        stack: vec![],
-        iter: Box::new(iter),
-    };
-
-    std::iter::from_fn(move || cursor.next())
 }
 
 #[rustfmt::skip::macros(assert_eq)]
 #[cfg(test)]
 mod tests {
     use crate::lexer::TokenKind::*;
-    use crate::lexer::{expr_to_postfix_notation, tokenize, Token, TokenKind};
+    use crate::lexer::{RPNIterator, Token, TokenIterator, TokenKind};
 
     #[test]
     #[ignore]
     fn invalid_expr_to_postfix_notation() {
         let text =
             "func main() {\nlet word1 = \"hello\";\nlet word2 = \" world!\";\nword1 + word2\n}";
-        let mut token_iter = tokenize(text);
-        let rpn_iter = expr_to_postfix_notation(token_iter);
+        let mut token_iter = TokenIterator::from(text);
+        let rpn_iter = RPNIterator::from_iter(token_iter);
         let v = rpn_iter.collect::<Vec<Token>>();
         println!("{v:?}");
     }
@@ -416,8 +432,8 @@ mod tests {
     fn complex_expr_to_postfix_notation_1() {
         let expr = "let a = 10 + 5 * 2 - 3;";
 
-        let token_iter = tokenize(expr);
-        let mut rpn_iter = expr_to_postfix_notation(token_iter);
+        let token_iter = TokenIterator::from(expr);
+        let mut rpn_iter = RPNIterator::from_iter(token_iter);
 
         assert_eq!(rpn_iter.next().unwrap().kind, Let);
         assert_eq!(rpn_iter.next().unwrap().kind, Ident);
@@ -436,8 +452,8 @@ mod tests {
     fn complex_expr_to_postfix_notation_2() {
         let expr = "let a = hello + world * a - c;";
 
-        let token_iter = tokenize(expr);
-        let mut rpn_iter = expr_to_postfix_notation(token_iter);
+        let token_iter = TokenIterator::from(expr);
+        let mut rpn_iter = RPNIterator::from_iter(token_iter);
 
         assert_eq!(rpn_iter.next().unwrap().kind, Let);
         assert_eq!(rpn_iter.next().unwrap().kind, Ident);
@@ -455,8 +471,8 @@ mod tests {
     #[test]
     fn simple_expr_to_postfix_notation_1() {
         let expr = "10 + 5 * 2 - 3";
-        let token_iter = tokenize(expr);
-        let mut rpn_iter = expr_to_postfix_notation(token_iter);
+        let token_iter = TokenIterator::from(expr);
+        let mut rpn_iter = RPNIterator::from_iter(token_iter);
         println!("{:?}", rpn_iter.next());
         println!("{:?}", rpn_iter.next());
         println!("{:?}", rpn_iter.next());
@@ -471,8 +487,8 @@ mod tests {
         let s = "10 + 20 * 5 - 15 / 3 * 6 + 4";
         // 10 20 5 * 15 3 6 * / 4 + - +
 
-        let token_iter = tokenize(s);
-        let mut rpn_iter = expr_to_postfix_notation(token_iter);
+        let token_iter = TokenIterator::from(s);
+        let mut rpn_iter = RPNIterator::from_iter(token_iter);
         assert_eq!(rpn_iter.next(), Some(Token::new(NumericLiteral,"10".to_string(), 2)));
         assert_eq!(rpn_iter.next(), Some(Token::new(NumericLiteral,"20".to_string(), 2)));
         assert_eq!(rpn_iter.next(), Some(Token::new(NumericLiteral,"5".to_string(), 1)));
@@ -492,7 +508,7 @@ mod tests {
     #[test]
     fn tokenize_simple_func() {
         let text = "func main() {}";
-        let mut token_iter = tokenize(text);
+        let mut token_iter = TokenIterator::from(text);
 
         assert_eq!(token_iter.next(), Some(Token { kind: Func, val: "func".to_string(), len: 4 }));
         assert_eq!(token_iter.next(), Some(Token { kind: Ident, val: "main".to_string(), len: 4 }));
@@ -507,7 +523,7 @@ mod tests {
     fn tokenize_simple_program() {
         let text =
             "func main() {\nlet word1 = \"hello\";\nlet word2 = \" world!\";\nword1 + word2\n}";
-        let mut token_iter = tokenize(text);
+        let mut token_iter = TokenIterator::from(text);
 
         // func main() {\n
         assert_eq!(token_iter.next(), Some(Token { kind: Func, val: "func".to_string(), len: 4 }));
@@ -543,7 +559,7 @@ mod tests {
     #[test]
     fn tokenize_literal_num() {
         let s = "987654321 ";
-        let mut token_iter = tokenize(s);
+        let mut token_iter = TokenIterator::from(s);
 
         assert_eq!(token_iter.next(), Some(Token { kind: NumericLiteral, val: "987654321".to_string(), len: 9 }));
         assert_eq!(token_iter.next(), None);
@@ -552,7 +568,7 @@ mod tests {
     #[test]
     fn tokenize_literal_string() {
         let s = r#"let text = "hello world";"#;
-        let mut token_iter = tokenize(s);
+        let mut token_iter = TokenIterator::from(s);
 
         assert_eq!(token_iter.next(), Some(Token { kind: Let, val: "let".to_string(), len: 3 }));
         assert_eq!(token_iter.next(), Some(Token { kind: Ident, val: "text".to_string(), len: 4 }));
@@ -566,7 +582,7 @@ mod tests {
     #[test]
     fn tokenize_expression() {
         let s = "10 + 20 * 5 - 15 / 3 * 6 + 4";
-        let mut token_iter = tokenize(s);
+        let mut token_iter = TokenIterator::from(s);
 
         assert_eq!(token_iter.next(), Some(Token::new(NumericLiteral, "10".to_string(), 2)));
         assert_eq!(token_iter.next(), Some(Token::new(Plus, "".to_string(), 1)));

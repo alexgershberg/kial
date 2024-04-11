@@ -1,4 +1,4 @@
-use crate::lexer::{tokenize, Token, TokenKind};
+use crate::lexer::{Token, TokenIterator, TokenKind};
 use std::collections::VecDeque;
 
 pub(crate) struct TokenStream<'a> {
@@ -108,7 +108,7 @@ impl Iterator for TokenStream<'_> {
 impl<'a> From<&'a str> for TokenStream<'a> {
     fn from(s: &'a str) -> Self {
         Self {
-            tokens: Box::new(tokenize(s)),
+            tokens: Box::new(TokenIterator::from(s)),
             buffer: VecDeque::new(),
         }
     }
